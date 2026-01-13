@@ -398,7 +398,69 @@ export default async (req, context) => {
       return ok({ state: s });
     }
 
-    return bad("알 수 없는 action: " + String(action || "(none)"), 404);
+    
+
+    /** -------------------------
+     * Teller Desk Online Storage
+     * - 저장 키: teller/<userId>/desk.json
+     * - 이 데이터는 teller.html 전용(창구 데스크) 상태를 저장합니다.
+     * --------------------------*/
+    const deskKey = () => {
+      const id = user?.sub || user?.id || user?.email || "anonymous";
+      const safe = String(id).replace(/[^a-zA-Z0-9._-]/g, "_");
+      return `teller/${safe}/desk.json`;
+    };
+
+    const makeDefaultDesk = () => ({
+      state: { user:{ name:"Teller", branch:"ONLINE", role:"TELLER", note:"" }, selectedCustomerId:null, selectedAccountId:null, alerts:0 },
+      db: {
+        customers:[
+          { id:"C-1001", name:"선우", phone:"010-1234-5678", note:"우대 고객(데모)" },
+          { id:"C-1002", name:"모락", phone:"010-2222-3333", note:"" },
+          { id:"C-1003", name:"하늘", phone:"010-9999-0000", note:"" },
+        ],
+        accounts:[
+          { id:"A-2001", no:"110-1234-5678", customerId:"C-1001", type:"입출금", status:"정상", balance:150000 },
+          { id:"A-2002", no:"220-0000-8888", customerId:"C-1001", type:"정기예금", status:"정상", balance:500000 },
+          { id:"A-2003", no:"110-9876-0001", customerId:"C-1002", type:"입출금", status:"정상", balance:89000 },
+          { id:"A-2004", no:"330-0000-1111", customerId:"C-1003", type:"입출금", status:"정상", balance:540000 },
+        ],
+        transactions:[],
+        products:[], autopays:[], bills:[], reports:[], security:[], cards:[], misc:[], legal:[], audit:[]
+      }
+    });
+
+    if (action === "tellerDeskGet") {
+      const k = deskKey();
+      const desk = await store.get(k, { type: "json" });
+      if (!desk) {
+        const created = makeDefaultDesk();
+        await store.setJSON(k, created, { metadata: { createdAt: nowISO() } });
+        return ok({ desk: created });
+      }
+      return ok({ desk });
+    }
+
+    if (action === "tellerDeskSet") {
+      const k = deskKey();
+      const desk = payload?.desk;
+      if (!desk || typeof desk !== "object") return bad("desk payload가 필요해");
+      // 아주 큰 payload 방지(대충)
+      const size = JSON.stringify(desk).length;
+      if (size > 900_000) return bad("데이터가 너무 커서 저장 불가(900KB 제한 데모)");
+      await store.setJSON(k, desk, { metadata: { savedAt: nowISO(), size } });
+      return ok({ savedAt: nowISO() });
+    }
+
+    if (action === "tellerDeskReset") {
+      const k = deskKey();
+      const created = makeDefaultDesk();
+      await store.setJSON(k, created, { metadata: { resetAt: nowISO() } });
+      return ok({ desk: created });
+    }
+
+
+return bad("알 수 없는 action: " + String(action || "(none)"), 404);
   } catch (e) {
     return json({ ok: false, error: e?.message || "서버 오류" }, 500);
   }

@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Teller Desk • 창구</title>
+
+  <!-- Netlify Identity Widget -->
+  <script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <style>
     :root{
       --bg:#0b0f19; --panel:#0f1629; --panel2:#0c1222; --border2:rgba(255,255,255,.06);
@@ -166,7 +169,7 @@
           <button class="btn" id="btnLoad">불러오기</button>
           <button class="btn danger" id="btnReset">초기화</button>
         </div>
-        <div class="mini" style="margin-top:8px">localStorage에 저장/복원 (완전 오프라인)</div>
+        <div class="mini" style="margin-top:8px">온라인 저장(Identity+Blobs) / 오프라인(localStorage)</div>
       </div>
 
       <footer>
@@ -196,6 +199,9 @@
               <small id="userMeta">—</small>
             </div>
           </div>
+
+          <button class="btn primary" id="btnTellerLogin" title="Netlify Identity 로그인">로그인</button>
+          <button class="btn" id="btnTellerLogout" title="로그아웃" style="display:none">로그아웃</button>
         </div>
       </header>
 
@@ -763,6 +769,64 @@
 
   <script>
     const STORAGE_KEY = "tellerdesk_v1";
+    // --- Netlify Identity + Online Storage(Blobs via Functions)
+    let netlifyUser = null;
+
+    async function api(action, payload = {}, method="POST"){
+      const token = netlifyUser?.token?.access_token;
+      const headers = { "Content-Type": "application/json" };
+      if(token) headers["authorization"] = `Bearer ${token}`;
+      const res = await fetch("/.netlify/functions/bank", {
+        method,
+        headers,
+        body: JSON.stringify({ action, payload })
+      });
+      let data=null;
+      try{ data = await res.json(); }catch(e){}
+      if(!res.ok || !data?.ok){
+        const msg = data?.error || data?.message || `요청 실패 (${res.status})`;
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function isIdentityReady(){
+      return typeof window !== "undefined" && !!window.netlifyIdentity;
+    }
+
+    async function onlineLoad(silent=false){
+      const data = await api("tellerDeskGet", {});
+      const desk = data.desk;
+      if(!desk){ if(!silent) toast("온라인 데이터 없음", "기본 데이터로 시작", "warn"); return false; }
+
+      try{
+        // state/db는 const 객체이므로 내부를 갱신
+        Object.assign(state, desk.state || {});
+        if(desk.db){
+          for(const k of Object.keys(db)){
+            if(desk.db[k] !== undefined) db[k] = desk.db[k];
+          }
+        }
+        if(!silent) toast("온라인 불러오기", "복원 완료", "ok");
+        return true;
+      }catch(e){
+        if(!silent) toast("온라인 불러오기 실패", String(e), "bad");
+        return false;
+      }
+    }
+
+    async function onlineSave(){
+      await api("tellerDeskSet", { desk: { state, db } });
+      toast("온라인 저장 완료", "Netlify Blobs에 저장했어", "ok");
+      audit("온라인 저장", state.selectedCustomerId, currentAccount()?.no, "");
+    }
+
+    async function onlineReset(){
+      await api("tellerDeskReset", {});
+      toast("온라인 초기화", "초기 상태로 리셋했어", "ok");
+      location.reload();
+    }
+
 
     const nowISO = () => new Date().toISOString();
     const fmtTime = (d=new Date()) => {
@@ -1094,34 +1158,52 @@
     function snapshot(){
       return JSON.stringify({ state, db }, null, 0);
     }
-    function save(){
+    async function save(){
+      try{
+        if(netlifyUser) return await onlineSave();
+      }catch(e){
+        toast("온라인 저장 실패", e.message, "bad");
+      }
+      // fallback: local
       localStorage.setItem(STORAGE_KEY, snapshot());
-      toast("저장 완료", "브라우저에 저장했어", "ok");
-      audit("데이터 저장", state.selectedCustomerId, currentAccount()?.no, "");
+      toast("저장 완료", "브라우저에 저장했어(오프라인)", "ok");
+      audit("데이터 저장(오프라인)", state.selectedCustomerId, currentAccount()?.no, "");
     }
-    function load(){
+    async function load(){
+      try{
+        if(netlifyUser){
+          const ok = await onlineLoad();
+          if(ok){ init(true); return; }
+        }
+      }catch(e){
+        toast("온라인 불러오기 실패", e.message, "bad");
+      }
+      // fallback: local
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw){ toast("저장 데이터 없음", "저장 먼저 해줘", "bad"); return; }
       try{
         const obj = JSON.parse(raw);
-        // shallow assign
         Object.assign(state, obj.state || {});
         for(const k of Object.keys(db)){
           if(obj.db && obj.db[k]) db[k] = obj.db[k];
         }
-        toast("불러오기 완료", "복원했어", "ok");
-        audit("데이터 불러오기", state.selectedCustomerId, currentAccount()?.no, "");
+        toast("불러오기 완료", "복원했어(오프라인)", "ok");
+        audit("데이터 불러오기(오프라인)", state.selectedCustomerId, currentAccount()?.no, "");
         init(true);
       }catch(e){
         toast("불러오기 실패", String(e), "bad");
       }
     }
-    function resetAll(){
+    async function resetAll(){
+      try{
+        if(netlifyUser) return await onlineReset();
+      }catch(e){
+        toast("온라인 초기화 실패", e.message, "bad");
+      }
       localStorage.removeItem(STORAGE_KEY);
       location.reload();
     }
-
-    // --- CSV export
+// --- CSV export
     function exportAuditCSV(){
       const header = ["time","actor","action","customerId","accountId","detail"];
       const rows = db.audit.map(a=>header.map(h=>String(a[h]??"").replaceAll('"','""')));
@@ -1469,6 +1551,76 @@
       $("#btnReset").addEventListener("click", resetAll);
     }
 
+    
+    async function bootIdentity(){
+      // 로그인 버튼
+      const loginBtn = $("#btnTellerLogin");
+      const logoutBtn = $("#btnTellerLogout");
+
+      const setBtn = (loggedIn)=>{
+        if(!loginBtn || !logoutBtn) return;
+        loginBtn.style.display = loggedIn ? "none" : "";
+        logoutBtn.style.display = loggedIn ? "" : "none";
+      };
+
+      if(!isIdentityReady()){
+        setBtn(false);
+        toast("Identity 미사용", "Netlify 배포 URL에서 열면 온라인 저장 가능", "warn");
+        init();
+        return;
+      }
+
+      loginBtn?.addEventListener("click", ()=> window.netlifyIdentity.open());
+      logoutBtn?.addEventListener("click", ()=> window.netlifyIdentity.logout());
+
+      window.netlifyIdentity.on("init", async (user)=>{
+        if(user){
+          netlifyUser = user;
+          // 현재 로그인 유저를 텔러로 표시(데모)
+          state.user.name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Teller";
+          state.user.branch = "ONLINE";
+          state.user.role = "TELLER";
+          setBtn(true);
+          try{
+            await onlineLoad(true);
+          }catch(e){
+            toast("온라인 불러오기 실패", e.message, "bad");
+          }
+          init(true);
+        }else{
+          netlifyUser = null;
+          setBtn(false);
+          init(); // 오프라인으로라도 열리게
+        }
+      });
+
+      window.netlifyIdentity.on("login", async (user)=>{
+        window.netlifyIdentity.close();
+        netlifyUser = user;
+        state.user.name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Teller";
+        state.user.branch = "ONLINE";
+        state.user.role = "TELLER";
+        setBtn(true);
+        try{
+          await onlineLoad(true);
+          toast("로그인 완료", "온라인 데이터 연결됨", "ok");
+        }catch(e){
+          toast("로그인 됐는데 로드 실패", e.message, "bad");
+        }
+        init(true);
+      });
+
+      window.netlifyIdentity.on("logout", ()=>{
+        netlifyUser = null;
+        setBtn(false);
+        toast("로그아웃", "오프라인 모드로 전환", "warn");
+        init(true);
+      });
+
+      window.netlifyIdentity.init();
+    }
+
+
     function init(skipBind=false){
       renderUser();
       renderCustomerSelect();
@@ -1478,7 +1630,7 @@
     }
 
     bind();
-    init();
+    bootIdentity();
   </script>
 </body>
 </html>

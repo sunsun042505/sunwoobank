@@ -33,3 +33,13 @@ Netlify CLI 쓰면 편함:
 - Netlify CLI 설치 후 `netlify dev` 실행  
 - 로컬에서는 Identity 컨텍스트가 제한될 수 있어서, 제일 정확한 건 “배포된 URL”에서 테스트!
 
+
+
+## 콘솔에 `/.netlify/identity/settings 404`가 뜰 때
+
+이건 **코드 문제가 아니라**, 지금 페이지가 Netlify Identity가 켜진 “Netlify 사이트”로 서비스되고 있지 않다는 뜻이야.
+
+- GitHub 미리보기/로컬(file://, localhost)에서는 항상 404
+- Netlify 대시보드에서 해당 사이트의 **Identity를 Enable** 했는지 확인
+- Enable 후에는 Deploys에서 **Trigger deploy** 한 번 눌러서 재배포
+- 배포 URL에서 `/.netlify/identity/settings`를 열었을 때 JSON이 뜨면 정상
