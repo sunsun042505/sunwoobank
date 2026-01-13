@@ -1,0 +1,1826 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>선우뱅크 - 고객</title>
+
+  <!-- Netlify Identity Widget (Netlify 대시보드에서 Identity 켜면 바로 동작) -->
+  <script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+  <style>
+    :root{
+      --bg: #0b0d12;
+      --panel:#111521;
+      --card:#0f1524;
+      --card2:#0c111d;
+      --text:#e8ecf5;
+      --muted:#a7b0c3;
+      --line: rgba(255,255,255,.08);
+      --shadow: 0 18px 55px rgba(0,0,0,.45);
+      --shadow2: 0 10px 24px rgba(0,0,0,.35);
+      --primary:#7aa2ff;
+      --danger:#ff6b6b;
+      --ok:#4cd4a0;
+      --warn:#ffd166;
+      --radius:16px;
+      --radius2:22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f6f7fb;
+        --panel:#ffffff;
+        --card:#ffffff;
+        --card2:#fbfcff;
+        --text:#151a27;
+        --muted:#5f6b86;
+        --line: rgba(10,14,25,.10);
+        --shadow: 0 18px 55px rgba(13,18,30,.12);
+        --shadow2: 0 10px 24px rgba(13,18,30,.10);
+        --primary:#2f6fff;
+        --danger:#e05252;
+        --ok:#118d64;
+        --warn:#b38300;
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 800px at 8% 0%, rgba(122,162,255,.25), transparent 55%),
+        radial-gradient(900px 600px at 92% 22%, rgba(76,212,160,.20), transparent 55%),
+        radial-gradient(900px 700px at 50% 120%, rgba(255,209,102,.10), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    a{color:inherit}
+    button, input, select, textarea{font-family:inherit}
+    .app{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 18px 42px;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 2px 18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+    }
+    .logo{
+      width:40px; height:40px;
+      border-radius: 14px;
+      background:
+        radial-gradient(16px 16px at 30% 30%, rgba(255,255,255,.25), transparent 60%),
+        linear-gradient(135deg, rgba(122,162,255,.95), rgba(76,212,160,.85));
+      box-shadow: var(--shadow2);
+    }
+    .brand h1{
+      font-size: 16px;
+      margin:0;
+      line-height:1.1;
+    }
+    .brand .sub{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top:2px;
+    }
+    .top-actions{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+
+    .pill{
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+    }
+    .pill small{color:var(--muted)}
+    .btn{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      box-shadow: var(--shadow2);
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.06)}
+    .btn:active{transform: translateY(0)}
+    .btn.primary{border-color: rgba(122,162,255,.35); background: rgba(122,162,255,.12)}
+    .btn.danger{border-color: rgba(255,107,107,.30); background: rgba(255,107,107,.10)}
+    .btn.ghost{box-shadow:none}
+    .btn:disabled{opacity:.55; cursor:not-allowed; transform:none}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr}
+    }
+
+    nav{
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .nav-head{
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+    }
+    .nav-head .who{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .nav-head .who strong{font-size:14px}
+    .nav-head .who small{color:var(--muted)}
+    .nav-list{padding: 10px}
+    .nav-item{
+      width:100%;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      cursor:pointer;
+      text-align:left;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .nav-item:hover{background: rgba(255,255,255,.05)}
+    .nav-item.active{
+      background: rgba(122,162,255,.12);
+      border-color: rgba(122,162,255,.28);
+    }
+    .nav-item .k{display:flex; align-items:center; gap:10px}
+    .nav-item .dot{
+      width:10px; height:10px; border-radius:999px;
+      background: rgba(255,255,255,.14);
+    }
+    .nav-item.active .dot{background: rgba(122,162,255,.85)}
+    .nav-item .badge{
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 4px 8px;
+      border-radius:999px;
+      background: rgba(255,255,255,.02);
+    }
+
+    main{
+      min-height: 640px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .main-head{
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid var(--line);
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+    }
+    .main-head h2{margin:0; font-size:16px}
+    .main-head p{margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.45}
+    .content{padding: 16px}
+    .cols{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+    }
+    @media (max-width: 980px){
+      .cols{grid-template-columns: 1fr}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow2);
+    }
+    .card h3{
+      margin:0 0 10px;
+      font-size: 14px;
+    }
+    .muted{color:var(--muted)}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .row + .row{margin-top:10px}
+
+    .kpi{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 640px){
+      .kpi{grid-template-columns: 1fr}
+    }
+    .kpi .tile{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      padding: 12px;
+      border-radius: 16px;
+    }
+    .kpi .tile .t{font-size:12px; color:var(--muted)}
+    .kpi .tile .v{font-size: 18px; margin-top:6px; font-weight: 800; letter-spacing:-0.6px}
+
+    .table{
+      width:100%;
+      border-collapse: collapse;
+      overflow:hidden;
+    }
+    .table th,.table td{
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align:left;
+      font-size: 12px;
+      vertical-align: top;
+    }
+    .table th{color: var(--muted); font-weight: 700}
+    .table tr:last-child td{border-bottom:none}
+    .mono{font-family: var(--mono)}
+    .tag{
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+    }
+    .tag.ok{color: rgba(76,212,160,.95); border-color: rgba(76,212,160,.25); background: rgba(76,212,160,.08)}
+    .tag.warn{color: rgba(255,209,102,.95); border-color: rgba(255,209,102,.25); background: rgba(255,209,102,.08)}
+    .tag.danger{color: rgba(255,107,107,.95); border-color: rgba(255,107,107,.25); background: rgba(255,107,107,.08)}
+
+    .form{
+      display:grid;
+      gap: 10px;
+    }
+    .field{
+      display:grid;
+      gap: 6px;
+    }
+    .field label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .field input, .field select, .field textarea{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.02);
+      color: var(--text);
+      outline:none;
+    }
+    .field textarea{min-height: 88px; resize: vertical}
+    .helper{
+      font-size: 11px;
+      color: var(--muted);
+      line-height:1.4;
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(620px, calc(100% - 28px));
+      border: 1px solid var(--line);
+      background: rgba(17,21,33,.86);
+      backdrop-filter: blur(12px);
+      color: var(--text);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      display:none;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      z-index: 50;
+    }
+    @media (prefers-color-scheme: light){
+      .toast{background: rgba(255,255,255,.86)}
+    }
+    .toast.show{display:flex}
+    .toast .t{font-size: 12px; line-height: 1.4}
+    .hr{height:1px; background: var(--line); margin: 12px 0}
+    .empty{
+      border: 1px dashed var(--line);
+      background: rgba(255,255,255,.02);
+      padding: 14px;
+      border-radius: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height:1.5;
+    }
+
+    /* Login cover */
+    .cover{
+      display:none;
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius2);
+      background: rgba(255,255,255,.03);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .cover.show{display:block}
+    .cover .inner{
+      padding: 20px 16px;
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 14px;
+      align-items:center;
+    }
+    @media (max-width: 980px){
+      .cover .inner{grid-template-columns: 1fr}
+    }
+    .hero{
+      padding: 14px;
+    }
+    .hero h2{margin:0; font-size: 18px; letter-spacing:-0.6px}
+    .hero p{margin:10px 0 0; color:var(--muted); line-height: 1.55; font-size: 13px}
+    .hero .bullets{
+      margin-top: 12px;
+      display:grid;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hero .bullets span{
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .hero .bullets i{
+      width: 10px; height: 10px; border-radius:999px;
+      background: rgba(122,162,255,.70);
+      margin-top: 5px;
+      flex: 0 0 auto;
+    }
+
+    .quick-card{
+      padding: 14px;
+    }
+    .quick-card .box{
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .quick-card .box h3{margin:0; font-size: 14px}
+    .quick-card .box p{margin:8px 0 0; color:var(--muted); font-size: 12px; line-height:1.5}
+    .quick-card .box .actions{margin-top: 12px; display:flex; gap:10px; flex-wrap:wrap}
+    .hint{
+      font-size:11px;
+      color: var(--muted);
+      margin-top: 10px;
+      line-height:1.4;
+    }
+
+    .footer{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 11px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      padding: 0 4px;
+    }
+    .footer a{color: var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>선우뱅크 <span class="muted" style="font-weight:600">· 고객</span></h1>
+          <span class="sub">Netlify + GitHub + Functions + Blobs (온라인 저장)</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div class="pill" id="statusPill" title="로그인 상태">
+          <small id="statusText">초기화 중…</small>
+        </div>
+
+        <button class="btn ghost" id="gotoTeller" title="직원(창구) 화면">teller</button>
+
+        <!-- Netlify Identity 버튼: 자동으로 로그인/로그아웃 UI 띄움 -->
+        <button class="btn primary" data-netlify-identity-button id="identityBtn">로그인</button>
+      </div>
+    </header>
+
+    <!-- 로그인 전: 안내 커버 -->
+    <section class="cover" id="cover">
+      <div class="inner">
+        <div class="hero">
+          <h2>온라인뱅킹</h2>
+          <p>계좌조회, 이체, 적금/예금 가입, 공과금 납부, 카드 관리, 개인정보 변경까지 한 화면에서 처리하는 고객 포털이야.</p>
+          <div class="bullets">
+            <span><i></i>로그인/회원가입은 <b>Netlify Identity</b>로 처리</span>
+            <span><i></i>고객 데이터는 <b>Netlify Blobs</b>에 저장 (Functions 통해 CRUD)</span>
+            <span><i></i>GitHub에 올리면 Netlify가 자동 배포</span>
+          </div>
+        </div>
+        <div class="quick-card">
+          <div class="box">
+            <h3>시작하기</h3>
+            <p>오른쪽 위 <b>로그인</b> 버튼 누르고 회원가입 → 로그인 하면, 내 계좌가 자동 생성돼.</p>
+            <div class="actions">
+              <button class="btn primary" id="openLogin">로그인/가입 열기</button>
+              <button class="btn" id="tryPing">서버 연결 확인</button>
+            </div>
+            <div class="hint">
+              ※ Netlify 대시보드에서 <b>Identity</b>를 ON 해야 정상 동작함. (README 참고)
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid" id="appGrid" style="display:none">
+      <nav>
+        <div class="nav-head">
+          <div class="who">
+            <div>
+              <strong id="navName">고객</strong>
+              <div><small id="navEmail" class="mono">-</small></div>
+            </div>
+            <span class="tag ok" id="navOnline">ONLINE</span>
+          </div>
+        </div>
+        <div class="nav-list" id="navList">
+          <!-- populated by JS -->
+        </div>
+      </nav>
+
+      <main>
+        <div class="main-head">
+          <div>
+            <h2 id="viewTitle">대시보드</h2>
+            <p id="viewDesc">요약 정보와 최근 거래를 확인해.</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+            <button class="btn" id="refreshBtn">새로고침</button>
+            <button class="btn" id="exportBtn" title="내 데이터 JSON 백업">백업(JSON)</button>
+          </div>
+        </div>
+        <div class="content" id="viewRoot">
+          <!-- view -->
+        </div>
+      </main>
+    </div>
+
+    <div class="footer">
+      <span>© SunwooBank Demo · 실제 금융 서비스 아님</span>
+      <span>
+        <a href="/teller.html">teller.html</a>
+        <span class="muted"> · </span>
+        <a href="https://docs.netlify.com/manage/security/secure-access-to-sites/identity/overview/" target="_blank" rel="noreferrer">Netlify Identity</a>
+        <span class="muted"> · </span>
+        <a href="https://docs.netlify.com/build/data-and-storage/netlify-blobs/" target="_blank" rel="noreferrer">Netlify Blobs</a>
+      </span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="t" id="toastText">-</div>
+    <button class="btn" id="toastClose" style="padding:8px 10px">닫기</button>
+  </div>
+
+<script>
+(function(){
+  /** -----------------------------
+   *  tiny utils
+   * ------------------------------*/
+  const $ = (sel, el=document) => el.querySelector(sel);
+  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const fmtKRW = (n) => new Intl.NumberFormat('ko-KR').format(Math.round(Number(n||0)));
+  const nowISO = () => new Date().toISOString();
+  const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : ("id-"+Math.random().toString(16).slice(2)+Date.now()));
+  const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (m)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+  function toast(msg){
+    const el = $("#toast");
+    $("#toastText").innerHTML = escapeHtml(msg);
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>el.classList.remove("show"), 4200);
+  }
+  $("#toastClose").addEventListener("click", ()=>$("#toast").classList.remove("show"));
+
+  /** -----------------------------
+   *  Netlify Identity bootstrap
+   * ------------------------------*/
+  const cover = $("#cover");
+  const appGrid = $("#appGrid");
+  const statusText = $("#statusText");
+  const navName = $("#navName");
+  const navEmail = $("#navEmail");
+  const navOnline = $("#navOnline");
+  const identityBtn = $("#identityBtn");
+
+  const gotoTeller = $("#gotoTeller");
+  gotoTeller.addEventListener("click", ()=> location.href = "/teller.html");
+
+  $("#openLogin").addEventListener("click", ()=>{
+    if (!window.netlifyIdentity) return toast("Identity 위젯 로딩이 안 됐어. Netlify 배포 후 다시!");
+    window.netlifyIdentity.open();
+  });
+
+  // Routes
+  const VIEWS = [
+    { id:"dash",   title:"대시보드", desc:"요약 정보와 최근 거래를 확인해." },
+    { id:"acct",   title:"계좌조회", desc:"계좌/잔액/거래내역을 확인해." },
+    { id:"xfer",   title:"이체", desc:"내 계좌/다른 계좌로 이체해." },
+    { id:"payee",  title:"받는사람", desc:"자주 쓰는 계좌를 저장/관리해." },
+    { id:"save",   title:"예·적금", desc:"상품 가입/해지, 납입 관리." },
+    { id:"bill",   title:"공과금", desc:"전기/가스/통신 납부." },
+    { id:"card",   title:"카드", desc:"카드 잠금/한도/내역 관리." },
+    { id:"profile",title:"내 정보", desc:"연락처/주소/알림 설정." },
+    { id:"support",title:"고객센터", desc:"문의 접수/내역 확인." },
+  ];
+
+  /** -----------------------------
+   *  State
+   * ------------------------------*/
+  let currentUser = null;
+  let state = null; // hydrated from server
+  let activeView = "dash";
+  let activeAccountId = null;
+
+  /** -----------------------------
+   *  API helper (Netlify Functions)
+   * ------------------------------*/
+  async function api(action, payload = {}, method="POST"){
+    const token = currentUser?.token?.access_token;
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["authorization"] = `Bearer ${token}`;
+
+    const res = await fetch("/.netlify/functions/bank", {
+      method,
+      headers,
+      body: method === "GET" ? undefined : JSON.stringify({ action, payload })
+    });
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+    if (!res.ok || !data?.ok){
+      const msg = data?.error || data?.message || `요청 실패 (${res.status})`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  async function ensureBoot(){
+    const d = await api("bootstrap", {});
+    state = d.state;
+    activeAccountId = state?.accounts?.[0]?.id ?? null;
+    renderAll();
+  }
+
+  async function refresh(){
+    const d = await api("getState", {}, "POST");
+    state = d.state;
+    if (!state?.accounts?.some(a=>a.id===activeAccountId)){
+      activeAccountId = state?.accounts?.[0]?.id ?? null;
+    }
+    renderAll();
+  }
+
+  /** -----------------------------
+   *  UI: nav
+   * ------------------------------*/
+  function renderNav(){
+    const root = $("#navList");
+    root.innerHTML = VIEWS.map(v => `
+      <button class="nav-item ${v.id===activeView?"active":""}" data-view="${v.id}">
+        <span class="k"><span class="dot"></span>${escapeHtml(v.title)}</span>
+        <span class="badge">${escapeHtml(navBadge(v.id))}</span>
+      </button>
+    `).join("");
+
+    $$(".nav-item", root).forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        setView(btn.dataset.view);
+      });
+    });
+  }
+
+  function navBadge(id){
+    if (!state) return "-";
+    if (id==="acct") return `${state.accounts?.length||0}개`;
+    if (id==="xfer") return "바로";
+    if (id==="payee") return `${state.payees?.length||0}명`;
+    if (id==="save") return `${state.savings?.length||0}건`;
+    if (id==="bill") return "납부";
+    if (id==="card") return `${state.cards?.length||0}장`;
+    if (id==="support") return `${state.tickets?.length||0}건`;
+    return "";
+  }
+
+  function setView(id){
+    activeView = id;
+    const v = VIEWS.find(x=>x.id===id) || VIEWS[0];
+    $("#viewTitle").textContent = v.title;
+    $("#viewDesc").textContent = v.desc;
+    renderNav();
+    renderView();
+  }
+
+  /** -----------------------------
+   *  View rendering
+   * ------------------------------*/
+  function renderAll(){
+    if (!state) return;
+    navName.textContent = state.profile?.name || "고객";
+    navEmail.textContent = state.profile?.email || (currentUser?.email ?? "-");
+    $("#statusText").textContent = `로그인됨 · ${currentUser?.email ?? ""}`;
+    navOnline.textContent = "ONLINE";
+    appGrid.style.display = "";
+    cover.classList.remove("show");
+
+    renderNav();
+    setView(activeView);
+  }
+
+  function getActiveAccount(){
+    return state?.accounts?.find(a=>a.id===activeAccountId) || state?.accounts?.[0] || null;
+  }
+
+  function renderView(){
+    const root = $("#viewRoot");
+    const a = getActiveAccount();
+
+    if (!state){
+      root.innerHTML = `<div class="empty">데이터 로딩 중…</div>`;
+      return;
+    }
+
+    if (activeView === "dash"){
+      const total = (state.accounts||[]).reduce((s,x)=>s+Number(x.balance||0),0);
+      const recent = (state.tx||[]).slice().sort((x,y)=> (y.ts||"").localeCompare(x.ts||"")).slice(0,8);
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>요약</h3>
+            <div class="kpi">
+              <div class="tile">
+                <div class="t">총 잔액</div>
+                <div class="v">${fmtKRW(total)}원</div>
+              </div>
+              <div class="tile">
+                <div class="t">보유 계좌</div>
+                <div class="v">${state.accounts?.length||0}개</div>
+              </div>
+              <div class="tile">
+                <div class="t">저축 상품</div>
+                <div class="v">${state.savings?.length||0}건</div>
+              </div>
+            </div>
+            <div class="hr"></div>
+            <div class="row">
+              <div class="muted" style="font-size:12px">활성 계좌</div>
+              <select id="acctSelect" style="max-width: 340px">
+                ${(state.accounts||[]).map(x=>`<option value="${escapeHtml(x.id)}" ${x.id===activeAccountId?"selected":""}>${escapeHtml(x.name)} · ${escapeHtml(x.bank)} ${escapeHtml(x.number)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="row">
+              <div>
+                <div style="font-weight:800">${escapeHtml(a?.name||"")}</div>
+                <div class="muted mono" style="font-size:12px">${escapeHtml(a?.bank||"")} ${escapeHtml(a?.number||"")}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted" style="font-size:12px">잔액</div>
+                <div style="font-size:18px; font-weight:900">${fmtKRW(a?.balance||0)}원</div>
+              </div>
+            </div>
+            <div class="hr"></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap">
+              <button class="btn primary" id="quickXfer">빠른 이체</button>
+              <button class="btn" id="quickSave">예·적금 가입</button>
+              <button class="btn" id="quickBill">공과금 납부</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>최근 거래</h3>
+            ${recent.length ? `
+              <table class="table">
+                <thead><tr><th>시간</th><th>내용</th><th>금액</th></tr></thead>
+                <tbody>
+                  ${recent.map(t=>{
+                    const sign = t.amount<0 ? "-" : "+";
+                    const cls = t.amount<0 ? "danger" : "ok";
+                    return `<tr>
+                      <td class="mono">${escapeHtml(formatKST(t.ts))}</td>
+                      <td>${escapeHtml(t.desc||"")}</td>
+                      <td><span class="tag ${cls}">${sign}${fmtKRW(Math.abs(t.amount||0))}원</span></td>
+                    </tr>`;
+                  }).join("")}
+                </tbody>
+              </table>
+            ` : `<div class="empty">거래가 아직 없어.</div>`}
+          </div>
+        </div>
+      `;
+
+      $("#acctSelect").addEventListener("change", (e)=>{
+        activeAccountId = e.target.value;
+        renderView();
+      });
+      $("#quickXfer").addEventListener("click", ()=>setView("xfer"));
+      $("#quickSave").addEventListener("click", ()=>setView("save"));
+      $("#quickBill").addEventListener("click", ()=>setView("bill"));
+      return;
+    }
+
+    if (activeView === "acct"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>내 계좌</h3>
+            ${(state.accounts||[]).map(x=>`
+              <div class="card" style="padding:12px; margin-bottom:10px; cursor:pointer" data-acct="${escapeHtml(x.id)}">
+                <div class="row">
+                  <div>
+                    <div style="font-weight:900">${escapeHtml(x.name)}</div>
+                    <div class="muted mono" style="font-size:12px">${escapeHtml(x.bank)} ${escapeHtml(x.number)}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="muted" style="font-size:12px">잔액</div>
+                    <div style="font-weight:900">${fmtKRW(x.balance)}원</div>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+            <div class="helper">계좌를 클릭하면 오른쪽에 거래내역이 보여.</div>
+          </div>
+
+          <div class="card">
+            <h3>거래내역</h3>
+            <div class="row">
+              <div>
+                <div style="font-weight:900">${escapeHtml(a?.name||"")}</div>
+                <div class="muted mono" style="font-size:12px">${escapeHtml(a?.bank||"")} ${escapeHtml(a?.number||"")}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted" style="font-size:12px">잔액</div>
+                <div style="font-weight:900">${fmtKRW(a?.balance||0)}원</div>
+              </div>
+            </div>
+            <div class="hr"></div>
+
+            <div class="row" style="flex-wrap:wrap">
+              <div class="field" style="min-width: 200px; flex:1">
+                <label>기간</label>
+                <select id="range">
+                  <option value="7">최근 7일</option>
+                  <option value="30" selected>최근 30일</option>
+                  <option value="90">최근 90일</option>
+                  <option value="365">최근 1년</option>
+                </select>
+              </div>
+              <div class="field" style="min-width: 220px; flex:2">
+                <label>검색</label>
+                <input id="q" placeholder="내용/메모 검색" />
+              </div>
+              <div style="align-self:end">
+                <button class="btn" id="downloadCsv">CSV</button>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+            <div id="txBox"></div>
+          </div>
+        </div>
+      `;
+
+      const rangeEl = $("#range");
+      const qEl = $("#q");
+      const txBox = $("#txBox");
+      function paintTx(){
+        const days = Number(rangeEl.value);
+        const q = (qEl.value||"").trim().toLowerCase();
+        const cutoff = Date.now() - days*24*60*60*1000;
+
+        const tx = (state.tx||[])
+          .filter(t=>t.accountId === a?.id)
+          .filter(t=> Date.parse(t.ts||"") >= cutoff)
+          .filter(t=> !q || (String(t.desc||"").toLowerCase().includes(q) || String(t.memo||"").toLowerCase().includes(q)))
+          .sort((x,y)=> (y.ts||"").localeCompare(x.ts||""));
+
+        if (!tx.length){
+          txBox.innerHTML = `<div class="empty">조건에 맞는 거래가 없어.</div>`;
+          return;
+        }
+
+        txBox.innerHTML = `
+          <table class="table">
+            <thead><tr><th>시간</th><th>내용</th><th>메모</th><th>금액</th></tr></thead>
+            <tbody>
+              ${tx.map(t=>{
+                const sign = t.amount<0 ? "-" : "+";
+                const cls = t.amount<0 ? "danger" : "ok";
+                return `<tr>
+                  <td class="mono">${escapeHtml(formatKST(t.ts))}</td>
+                  <td>${escapeHtml(t.desc||"")}</td>
+                  <td class="muted">${escapeHtml(t.memo||"")}</td>
+                  <td><span class="tag ${cls}">${sign}${fmtKRW(Math.abs(t.amount||0))}원</span></td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+      rangeEl.addEventListener("change", paintTx);
+      qEl.addEventListener("input", ()=>{ paintTx(); });
+
+      // account click
+      $$(".card[data-acct]").forEach(card=>{
+        card.addEventListener("click", ()=>{
+          activeAccountId = card.dataset.acct;
+          renderView();
+        });
+      });
+
+      $("#downloadCsv").addEventListener("click", ()=>{
+        const rows = (state.tx||[])
+          .filter(t=>t.accountId===a?.id)
+          .sort((x,y)=> (y.ts||"").localeCompare(x.ts||""))
+          .map(t=>({
+            ts: formatKST(t.ts),
+            desc: t.desc||"",
+            memo: t.memo||"",
+            amount: t.amount||0,
+            balanceAfter: t.balanceAfter||""
+          }));
+        downloadCSV(`statement_${a?.bank||"bank"}_${a?.number||"acct"}.csv`, rows);
+      });
+
+      paintTx();
+      return;
+    }
+
+    if (activeView === "xfer"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>이체</h3>
+            <form class="form" id="xferForm">
+              <div class="field">
+                <label>출금계좌</label>
+                <select id="from">
+                  ${(state.accounts||[]).map(x=>`<option value="${escapeHtml(x.id)}" ${x.id===activeAccountId?"selected":""}>${escapeHtml(x.name)} · ${escapeHtml(x.bank)} ${escapeHtml(x.number)} (잔액 ${fmtKRW(x.balance)}원)</option>`).join("")}
+                </select>
+              </div>
+
+              <div class="field">
+                <label>받는사람</label>
+                <select id="toMode">
+                  <option value="payee" selected>등록된 받는사람</option>
+                  <option value="manual">직접 입력</option>
+                  <option value="my">내 다른 계좌</option>
+                </select>
+              </div>
+
+              <div class="field" id="payeeBox">
+                <label>받는사람 선택</label>
+                <select id="payee">
+                  ${(state.payees||[]).length ? (state.payees||[]).map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${escapeHtml(p.bank)} ${escapeHtml(p.number)}</option>`).join("") : `<option value="">(없음) 받는사람 탭에서 추가해줘</option>`}
+                </select>
+              </div>
+
+              <div class="field" id="manualBox" style="display:none">
+                <label>받는 계좌</label>
+                <div class="row" style="gap:8px">
+                  <input id="toBank" placeholder="은행" style="flex: 0.9" />
+                  <input id="toNumber" placeholder="계좌번호" style="flex: 1.1" />
+                </div>
+                <input id="toName" placeholder="예금주(메모)" />
+              </div>
+
+              <div class="field" id="myBox" style="display:none">
+                <label>내 다른 계좌</label>
+                <select id="myTo">
+                  ${(state.accounts||[]).filter(x=>x.id!==activeAccountId).map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} · ${escapeHtml(x.bank)} ${escapeHtml(x.number)}</option>`).join("") || `<option value="">(없음) 추가 계좌가 없어</option>`}
+                </select>
+              </div>
+
+              <div class="field">
+                <label>이체 금액</label>
+                <input id="amount" type="number" min="1" step="1" placeholder="예: 5000" required />
+                <div class="helper">※ 실제 계좌 아님(데모). 잔액 내에서만 출금돼.</div>
+              </div>
+
+              <div class="field">
+                <label>받는사람에게 표시(메모)</label>
+                <input id="memo" placeholder="예: 선우 용돈" maxlength="30" />
+              </div>
+
+              <div class="row">
+                <button class="btn primary" type="submit">이체하기</button>
+                <button class="btn" type="button" id="fillDemo">데모값</button>
+              </div>
+            </form>
+
+            <div class="hr"></div>
+            <div class="empty">
+              보안 확인을 위해 “OTP(6자리)”를 한 번 더 입력하는 흐름이 있어.<br/>
+              (진짜 OTP 아니고, 이 페이지에서 랜덤 생성하는 데모용이야.)
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>이체 확인</h3>
+            <div id="confirmBox" class="empty">이체 정보를 입력하면 여기에 확인 창이 나와.</div>
+          </div>
+        </div>
+      `;
+
+      const toMode = $("#toMode");
+      const payeeBox = $("#payeeBox");
+      const manualBox = $("#manualBox");
+      const myBox = $("#myBox");
+      toMode.addEventListener("change", ()=>{
+        const v = toMode.value;
+        payeeBox.style.display = v==="payee" ? "" : "none";
+        manualBox.style.display = v==="manual" ? "" : "none";
+        myBox.style.display = v==="my" ? "" : "none";
+        updateConfirm();
+      });
+
+      const fields = ["from","payee","toBank","toNumber","toName","myTo","amount","memo"];
+      fields.forEach(id=>{
+        const el = $("#"+id);
+        if (!el) return;
+        el.addEventListener("input", updateConfirm);
+        el.addEventListener("change", updateConfirm);
+      });
+
+      $("#fillDemo").addEventListener("click", ()=>{
+        $("#amount").value = "5000";
+        $("#memo").value = "선우 테스트";
+        updateConfirm();
+      });
+
+      let otp = null;
+      function getFrom(){
+        const fromId = $("#from").value;
+        return state.accounts.find(a=>a.id===fromId);
+      }
+      function resolveTo(){
+        const mode = toMode.value;
+        if (mode==="payee"){
+          const id = $("#payee").value;
+          const p = state.payees.find(x=>x.id===id);
+          if (!p) return null;
+          return { type:"external", bank:p.bank, number:p.number, name:p.name, payeeId:p.id };
+        }
+        if (mode==="manual"){
+          const bank = ($("#toBank").value||"").trim();
+          const number = ($("#toNumber").value||"").trim();
+          const name = ($("#toName").value||"").trim() || "직접입력";
+          if (!bank || !number) return null;
+          return { type:"external", bank, number, name };
+        }
+        if (mode==="my"){
+          const id = $("#myTo").value;
+          const acc = state.accounts.find(a=>a.id===id);
+          if (!acc) return null;
+          return { type:"internal", accountId: acc.id, bank:acc.bank, number:acc.number, name:acc.name };
+        }
+        return null;
+      }
+
+      function updateConfirm(){
+        const from = getFrom();
+        const to = resolveTo();
+        const amt = Number($("#amount").value||0);
+        const memo = ($("#memo").value||"").trim();
+
+        const box = $("#confirmBox");
+        if (!from || !to || !amt){
+          box.className = "empty";
+          box.innerHTML = "이체 정보를 입력하면 여기에 확인 창이 나와.";
+          return;
+        }
+        otp = (Math.floor(100000 + Math.random()*900000)).toString();
+        box.className = "card";
+        box.innerHTML = `
+          <h3 style="margin:0 0 8px">최종 확인</h3>
+          <div class="row"><div class="muted">출금</div><div><b>${escapeHtml(from.name)}</b> <span class="muted mono">(${escapeHtml(from.number)})</span></div></div>
+          <div class="row"><div class="muted">입금</div><div><b>${escapeHtml(to.name)}</b> <span class="muted mono">${escapeHtml(to.bank)} ${escapeHtml(to.number)}</span></div></div>
+          <div class="row"><div class="muted">금액</div><div><span class="tag warn">${fmtKRW(amt)}원</span></div></div>
+          <div class="row"><div class="muted">메모</div><div>${escapeHtml(memo||"-")}</div></div>
+          <div class="hr"></div>
+          <div class="field">
+            <label>OTP(6자리) 입력</label>
+            <input id="otpInput" class="mono" placeholder="OTP" maxlength="6" />
+            <div class="helper">데모 OTP: <span class="mono"><b>${otp}</b></span></div>
+          </div>
+          <button class="btn primary" id="doXfer" style="width:100%">확인 후 이체</button>
+        `;
+        $("#doXfer").addEventListener("click", async ()=>{
+          const userOtp = ($("#otpInput").value||"").trim();
+          if (userOtp !== otp) return toast("OTP가 틀렸어 (데모). 다시 입력!");
+          try{
+            $("#doXfer").disabled = true;
+            const resp = await api("transfer", {
+              fromAccountId: from.id,
+              to,
+              amount: amt,
+              memo
+            });
+            state = resp.state;
+            toast("이체 완료!");
+            activeAccountId = from.id;
+            setView("dash");
+          }catch(e){
+            toast(e.message);
+          }finally{
+            $("#doXfer").disabled = false;
+          }
+        });
+      }
+
+      $("#xferForm").addEventListener("submit", (e)=>{
+        e.preventDefault();
+        // confirmBox already handles final step
+        updateConfirm();
+        toast("오른쪽에서 OTP 확인하고 이체 눌러줘!");
+      });
+
+      updateConfirm();
+      return;
+    }
+
+    if (activeView === "payee"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>받는사람 목록</h3>
+            <div id="payeeList"></div>
+          </div>
+
+          <div class="card">
+            <h3>추가 / 수정</h3>
+            <form class="form" id="payeeForm">
+              <input type="hidden" id="pid" />
+              <div class="field">
+                <label>이름</label>
+                <input id="pname" placeholder="예: 엄마" required />
+              </div>
+              <div class="field">
+                <label>은행</label>
+                <input id="pbank" placeholder="예: 신한" required />
+              </div>
+              <div class="field">
+                <label>계좌번호</label>
+                <input id="pnum" placeholder="예: 110-123-456789" required />
+              </div>
+              <div class="row">
+                <button class="btn primary" type="submit">저장</button>
+                <button class="btn" type="button" id="resetPayee">초기화</button>
+              </div>
+              <div class="helper">받는사람은 이체 화면에서 바로 선택 가능.</div>
+            </form>
+          </div>
+        </div>
+      `;
+      const list = $("#payeeList");
+      function paint(){
+        const items = state.payees || [];
+        if (!items.length){
+          list.innerHTML = `<div class="empty">등록된 받는사람이 없어. 오른쪽에서 추가해줘.</div>`;
+          return;
+        }
+        list.innerHTML = items.map(p=>`
+          <div class="card" style="padding:12px; margin-bottom:10px">
+            <div class="row">
+              <div>
+                <div style="font-weight:900">${escapeHtml(p.name)}</div>
+                <div class="muted mono" style="font-size:12px">${escapeHtml(p.bank)} ${escapeHtml(p.number)}</div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap">
+                <button class="btn" data-edit="${escapeHtml(p.id)}">수정</button>
+                <button class="btn danger" data-del="${escapeHtml(p.id)}">삭제</button>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+        $$("button[data-edit]").forEach(b=>{
+          b.addEventListener("click", ()=>{
+            const p = items.find(x=>x.id===b.dataset.edit);
+            if (!p) return;
+            $("#pid").value = p.id;
+            $("#pname").value = p.name;
+            $("#pbank").value = p.bank;
+            $("#pnum").value = p.number;
+            toast("수정 모드");
+          });
+        });
+        $$("button[data-del]").forEach(b=>{
+          b.addEventListener("click", async ()=>{
+            if (!confirm("삭제할까?")) return;
+            try{
+              const resp = await api("deletePayee", { id: b.dataset.del });
+              state = resp.state;
+              toast("삭제 완료");
+              paint();
+            }catch(e){
+              toast(e.message);
+            }
+          });
+        });
+      }
+
+      $("#resetPayee").addEventListener("click", ()=>{
+        $("#pid").value = "";
+        $("#pname").value = "";
+        $("#pbank").value = "";
+        $("#pnum").value = "";
+      });
+
+      $("#payeeForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        const id = ($("#pid").value||"").trim() || null;
+        const payload = {
+          id,
+          name: ($("#pname").value||"").trim(),
+          bank: ($("#pbank").value||"").trim(),
+          number: ($("#pnum").value||"").trim(),
+        };
+        try{
+          const resp = await api("upsertPayee", payload);
+          state = resp.state;
+          toast("저장 완료!");
+          $("#resetPayee").click();
+          paint();
+        }catch(err){
+          toast(err.message);
+        }
+      });
+
+      paint();
+      return;
+    }
+
+    if (activeView === "save"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>보유 상품</h3>
+            <div id="saveList"></div>
+          </div>
+
+          <div class="card">
+            <h3>상품 가입</h3>
+            <form class="form" id="saveForm">
+              <div class="field">
+                <label>상품 유형</label>
+                <select id="stype">
+                  <option value="예금">정기예금</option>
+                  <option value="적금" selected>정기적금</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>기간</label>
+                <select id="term">
+                  <option value="3">3개월</option>
+                  <option value="6">6개월</option>
+                  <option value="12" selected>12개월</option>
+                  <option value="24">24개월</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>월 납입/예치 금액</label>
+                <input id="samt" type="number" min="1" step="1" placeholder="예: 20000" required />
+              </div>
+              <div class="field">
+                <label>출금계좌</label>
+                <select id="sfrom">
+                  ${(state.accounts||[]).map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} (잔액 ${fmtKRW(x.balance)}원)</option>`).join("")}
+                </select>
+              </div>
+              <div class="row">
+                <button class="btn primary" type="submit">가입</button>
+                <button class="btn" type="button" id="sDemo">데모값</button>
+              </div>
+              <div class="helper">데모 금리: 2.6%~4.2% 범위에서 자동 결정</div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      const list = $("#saveList");
+      function paint(){
+        const items = state.savings || [];
+        if (!items.length){
+          list.innerHTML = `<div class="empty">가입한 상품이 없어. 오른쪽에서 가입해봐.</div>`;
+          return;
+        }
+        list.innerHTML = items
+          .slice()
+          .sort((a,b)=> (b.openedAt||"").localeCompare(a.openedAt||""))
+          .map(s=>`
+            <div class="card" style="padding:12px; margin-bottom:10px">
+              <div class="row">
+                <div>
+                  <div style="font-weight:900">${escapeHtml(s.type)} · ${escapeHtml(s.termMonths)}개월</div>
+                  <div class="muted" style="font-size:12px">
+                    금리 <b>${escapeHtml(s.apr)}%</b> · 금액 ${fmtKRW(s.amount)}원
+                  </div>
+                  <div class="muted mono" style="font-size:12px">
+                    가입 ${escapeHtml(formatKST(s.openedAt))}
+                    ${s.status==="ACTIVE" ? "" : " · 해지됨"}
+                  </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                  ${s.status==="ACTIVE" ? `<button class="btn danger" data-close="${escapeHtml(s.id)}">해지</button>` : `<span class="tag">CLOSED</span>`}
+                </div>
+              </div>
+            </div>
+          `).join("");
+
+        $$("button[data-close]").forEach(b=>{
+          b.addEventListener("click", async ()=>{
+            if (!confirm("해지할까? (데모)")) return;
+            try{
+              const resp = await api("closeSaving", { id: b.dataset.close });
+              state = resp.state;
+              toast("해지 완료 (원금이 계좌로 입금됨)");
+              paint();
+            }catch(e){ toast(e.message); }
+          });
+        });
+      }
+
+      $("#sDemo").addEventListener("click", ()=>{
+        $("#samt").value = "20000";
+      });
+
+      $("#saveForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        try{
+          const resp = await api("openSaving", {
+            type: $("#stype").value,
+            termMonths: Number($("#term").value),
+            amount: Number($("#samt").value),
+            fromAccountId: $("#sfrom").value
+          });
+          state = resp.state;
+          toast("가입 완료!");
+          $("#saveForm").reset();
+          paint();
+        }catch(err){
+          toast(err.message);
+        }
+      });
+
+      paint();
+      return;
+    }
+
+    if (activeView === "bill"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>공과금 납부</h3>
+            <form class="form" id="billForm">
+              <div class="field">
+                <label>분류</label>
+                <select id="btype">
+                  <option value="전기" selected>전기</option>
+                  <option value="가스">가스</option>
+                  <option value="통신">통신</option>
+                  <option value="수도">수도</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>고객번호</label>
+                <input id="bcust" placeholder="예: 123-456-789" required />
+              </div>
+              <div class="field">
+                <label>금액</label>
+                <input id="bamt" type="number" min="1" step="1" placeholder="예: 16800" required />
+              </div>
+              <div class="field">
+                <label>출금계좌</label>
+                <select id="bfrom">
+                  ${(state.accounts||[]).map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)} (잔액 ${fmtKRW(x.balance)}원)</option>`).join("")}
+                </select>
+              </div>
+              <div class="row">
+                <button class="btn primary" type="submit">납부</button>
+                <button class="btn" type="button" id="bDemo">데모값</button>
+              </div>
+              <div class="helper">납부 내역은 거래내역에 기록돼.</div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>최근 납부</h3>
+            <div id="billList"></div>
+          </div>
+        </div>
+      `;
+
+      const billList = $("#billList");
+      function paint(){
+        const bills = (state.bills||[]).slice().sort((a,b)=> (b.ts||"").localeCompare(a.ts||"")).slice(0,10);
+        if (!bills.length){
+          billList.innerHTML = `<div class="empty">최근 납부 내역이 없어.</div>`;
+          return;
+        }
+        billList.innerHTML = `
+          <table class="table">
+            <thead><tr><th>시간</th><th>분류</th><th>고객번호</th><th>금액</th></tr></thead>
+            <tbody>
+              ${bills.map(b=>`
+                <tr>
+                  <td class="mono">${escapeHtml(formatKST(b.ts))}</td>
+                  <td>${escapeHtml(b.type)}</td>
+                  <td class="mono">${escapeHtml(b.customerNo)}</td>
+                  <td><span class="tag warn">${fmtKRW(b.amount)}원</span></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+
+      $("#bDemo").addEventListener("click", ()=>{
+        $("#bcust").value = "123-456-789";
+        $("#bamt").value = "16800";
+      });
+
+      $("#billForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        try{
+          const resp = await api("payBill", {
+            type: $("#btype").value,
+            customerNo: ($("#bcust").value||"").trim(),
+            amount: Number($("#bamt").value),
+            fromAccountId: $("#bfrom").value
+          });
+          state = resp.state;
+          toast("납부 완료!");
+          $("#billForm").reset();
+          paint();
+        }catch(err){
+          toast(err.message);
+        }
+      });
+
+      paint();
+      return;
+    }
+
+    if (activeView === "card"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>내 카드</h3>
+            <div id="cardList"></div>
+          </div>
+
+          <div class="card">
+            <h3>카드 설정</h3>
+            <div class="empty">카드를 선택하면 여기서 한도/잠금 등을 설정할 수 있어.</div>
+            <div id="cardEditor" style="margin-top:12px"></div>
+          </div>
+        </div>
+      `;
+
+      const cardList = $("#cardList");
+      const cardEditor = $("#cardEditor");
+
+      function paint(){
+        const cards = state.cards || [];
+        if (!cards.length){
+          cardList.innerHTML = `<div class="empty">카드가 없어. (데모 계정은 기본 카드 1장 생성)</div>`;
+          return;
+        }
+        cardList.innerHTML = cards.map(c=>`
+          <div class="card" style="padding:12px; margin-bottom:10px; cursor:pointer" data-card="${escapeHtml(c.id)}">
+            <div class="row">
+              <div>
+                <div style="font-weight:900">${escapeHtml(c.name)}</div>
+                <div class="muted mono" style="font-size:12px">${escapeHtml(maskCard(c.number))}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="muted" style="font-size:12px">상태</div>
+                <div>${c.locked ? `<span class="tag danger">LOCKED</span>` : `<span class="tag ok">ACTIVE</span>`}</div>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+        $$("[data-card]").forEach(el=>{
+          el.addEventListener("click", ()=>{
+            const c = cards.find(x=>x.id===el.dataset.card);
+            if (!c) return;
+            edit(c);
+          });
+        });
+
+        edit(cards[0]);
+      }
+
+      function edit(c){
+        cardEditor.innerHTML = `
+          <div class="card">
+            <h3 style="margin:0 0 10px">선택 카드</h3>
+            <div class="row">
+              <div>
+                <div style="font-weight:900">${escapeHtml(c.name)}</div>
+                <div class="muted mono" style="font-size:12px">${escapeHtml(maskCard(c.number))}</div>
+              </div>
+              <div>${c.locked ? `<span class="tag danger">LOCKED</span>` : `<span class="tag ok">ACTIVE</span>`}</div>
+            </div>
+            <div class="hr"></div>
+            <div class="form">
+              <div class="field">
+                <label>월 사용 한도(원)</label>
+                <input id="limit" type="number" min="0" step="1" value="${escapeHtml(c.monthlyLimit||0)}" />
+              </div>
+              <div class="row">
+                <button class="btn primary" id="saveCard">저장</button>
+                <button class="btn ${c.locked ? "":"danger"}" id="toggleLock">${c.locked ? "잠금 해제" : "카드 잠금"}</button>
+              </div>
+              <div class="helper">※ 데모: 잠금 시 카드 결제 기능이 막혔다고 가정</div>
+            </div>
+          </div>
+        `;
+        $("#saveCard").addEventListener("click", async ()=>{
+          try{
+            const resp = await api("updateCard", {
+              id: c.id,
+              monthlyLimit: Number($("#limit").value||0)
+            });
+            state = resp.state;
+            toast("저장 완료!");
+            paint();
+          }catch(e){ toast(e.message); }
+        });
+        $("#toggleLock").addEventListener("click", async ()=>{
+          try{
+            const resp = await api("toggleCardLock", { id: c.id });
+            state = resp.state;
+            toast("처리 완료!");
+            paint();
+          }catch(e){ toast(e.message); }
+        });
+      }
+
+      paint();
+      return;
+    }
+
+    if (activeView === "profile"){
+      const p = state.profile || {};
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>내 정보</h3>
+            <form class="form" id="profileForm">
+              <div class="field">
+                <label>이름</label>
+                <input id="name" value="${escapeHtml(p.name||"")}" required />
+              </div>
+              <div class="field">
+                <label>휴대폰</label>
+                <input id="phone" value="${escapeHtml(p.phone||"")}" placeholder="예: 010-1234-5678" />
+              </div>
+              <div class="field">
+                <label>주소</label>
+                <input id="addr" value="${escapeHtml(p.address||"")}" placeholder="예: 부산광역시 ..." />
+              </div>
+              <div class="field">
+                <label>알림</label>
+                <select id="notify">
+                  <option value="ON" ${p.notify==="ON"?"selected":""}>ON</option>
+                  <option value="OFF" ${p.notify==="OFF"?"selected":""}>OFF</option>
+                </select>
+              </div>
+              <div class="row">
+                <button class="btn primary" type="submit">저장</button>
+                <button class="btn" type="button" id="resetP">원래대로</button>
+              </div>
+              <div class="helper">이메일은 Netlify Identity 쪽 로그인 계정이 기준이야.</div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>보안</h3>
+            <div class="row">
+              <div>
+                <div style="font-weight:900">2단계 인증(데모)</div>
+                <div class="muted" style="font-size:12px">ON이면 이체/중요 작업에서 OTP 확인을 더 보여줘.</div>
+              </div>
+              <button class="btn" id="toggle2fa">${state.security?.twoFA ? "OFF" : "ON"}</button>
+            </div>
+            <div class="hr"></div>
+            <div class="empty">
+              비밀번호 변경/계정 잠금 등은 Netlify Identity에서 관리해. (로그인 버튼 → 설정)
+            </div>
+          </div>
+        </div>
+      `;
+
+      $("#resetP").addEventListener("click", ()=>renderView());
+
+      $("#profileForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        try{
+          const resp = await api("updateProfile", {
+            name: ($("#name").value||"").trim(),
+            phone: ($("#phone").value||"").trim(),
+            address: ($("#addr").value||"").trim(),
+            notify: $("#notify").value
+          });
+          state = resp.state;
+          toast("저장 완료!");
+          renderNav();
+        }catch(err){
+          toast(err.message);
+        }
+      });
+
+      $("#toggle2fa").addEventListener("click", async ()=>{
+        try{
+          const resp = await api("toggle2FA", {});
+          state = resp.state;
+          toast("변경 완료!");
+          renderView();
+        }catch(e){ toast(e.message); }
+      });
+
+      return;
+    }
+
+    if (activeView === "support"){
+      root.innerHTML = `
+        <div class="cols">
+          <div class="card">
+            <h3>문의하기</h3>
+            <form class="form" id="ticketForm">
+              <div class="field">
+                <label>분류</label>
+                <select id="cat">
+                  <option value="이체" selected>이체</option>
+                  <option value="계좌">계좌</option>
+                  <option value="카드">카드</option>
+                  <option value="상품">상품</option>
+                  <option value="기타">기타</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>제목</label>
+                <input id="title" placeholder="예: 이체 오류" required />
+              </div>
+              <div class="field">
+                <label>내용</label>
+                <textarea id="body" placeholder="상황을 자세히 적어줘" required></textarea>
+              </div>
+              <div class="row">
+                <button class="btn primary" type="submit">접수</button>
+                <button class="btn" type="button" id="ticketDemo">데모값</button>
+              </div>
+              <div class="helper">데모지만, 접수하면 온라인 저장소(Blobs)에 저장돼.</div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>내 문의 내역</h3>
+            <div id="ticketList"></div>
+          </div>
+        </div>
+      `;
+
+      const ticketList = $("#ticketList");
+      function paint(){
+        const items = (state.tickets||[]).slice().sort((a,b)=> (b.ts||"").localeCompare(a.ts||""));
+        if (!items.length){
+          ticketList.innerHTML = `<div class="empty">문의 내역이 없어.</div>`;
+          return;
+        }
+        ticketList.innerHTML = items.map(t=>`
+          <div class="card" style="padding:12px; margin-bottom:10px">
+            <div class="row">
+              <div>
+                <div style="font-weight:900">${escapeHtml(t.title)}</div>
+                <div class="muted" style="font-size:12px">${escapeHtml(t.category)} · <span class="mono">${escapeHtml(formatKST(t.ts))}</span></div>
+              </div>
+              <span class="tag ${t.status==="OPEN"?"warn":"ok"}">${escapeHtml(t.status)}</span>
+            </div>
+            <div class="hr"></div>
+            <div class="muted" style="font-size:12px; line-height:1.55">${escapeHtml(t.body)}</div>
+          </div>
+        `).join("");
+      }
+
+      $("#ticketDemo").addEventListener("click", ()=>{
+        $("#title").value = "이체가 안 돼요";
+        $("#body").value = "OTP 입력 후에도 에러가 나는 것 같아요. 확인 부탁!";
+      });
+
+      $("#ticketForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        try{
+          const resp = await api("createTicket", {
+            category: $("#cat").value,
+            title: ($("#title").value||"").trim(),
+            body: ($("#body").value||"").trim(),
+          });
+          state = resp.state;
+          toast("접수 완료!");
+          $("#ticketForm").reset();
+          paint();
+          renderNav();
+        }catch(err){
+          toast(err.message);
+        }
+      });
+
+      paint();
+      return;
+    }
+
+    // fallback
+    root.innerHTML = `<div class="empty">준비중…</div>`;
+  }
+
+  /** -----------------------------
+   *  Actions
+   * ------------------------------*/
+  $("#refreshBtn").addEventListener("click", async ()=>{
+    try{
+      $("#refreshBtn").disabled = true;
+      await refresh();
+      toast("업데이트 완료");
+    }catch(e){
+      toast(e.message);
+    }finally{
+      $("#refreshBtn").disabled = false;
+    }
+  });
+
+  $("#exportBtn").addEventListener("click", ()=>{
+    if (!state) return;
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `sunwoobank_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $("#tryPing").addEventListener("click", async ()=>{
+    try{
+      $("#tryPing").disabled = true;
+      const res = await fetch("/.netlify/functions/bank?ping=1");
+      const txt = await res.text();
+      toast(res.ok ? "서버 OK: " + txt.slice(0,80) : "서버 에러: " + res.status);
+    }catch(e){
+      toast("서버 연결 실패: " + e.message);
+    }finally{
+      $("#tryPing").disabled = false;
+    }
+  });
+
+  /** -----------------------------
+   *  CSV export helper
+   * ------------------------------*/
+  function downloadCSV(filename, rows){
+    if (!rows?.length) return toast("내보낼 데이터가 없어");
+    const headers = Object.keys(rows[0]);
+    const escapeCSV = (v)=>{
+      const s = String(v ?? "");
+      if (/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+      return s;
+    };
+    const csv = [headers.join(","), ...rows.map(r=> headers.map(h=>escapeCSV(r[h])).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function formatKST(iso){
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso);
+    // KST 표기: YYYY-MM-DD HH:mm
+    const pad=(n)=>String(n).padStart(2,"0");
+    const yyyy=d.getFullYear();
+    const mm=pad(d.getMonth()+1);
+    const dd=pad(d.getDate());
+    const hh=pad(d.getHours());
+    const mi=pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
+  function maskCard(num){
+    const s = String(num||"").replace(/\D/g,"");
+    if (s.length < 8) return num||"";
+    return `${s.slice(0,4)}-${s.slice(4,8)}-****-****`;
+  }
+
+  /** -----------------------------
+   *  Identity events
+   * ------------------------------*/
+  function setLoggedOutUI(){
+    statusText.textContent = "로그인 필요";
+    navOnline.textContent = "OFFLINE";
+    appGrid.style.display = "none";
+    cover.classList.add("show");
+    navName.textContent = "고객";
+    navEmail.textContent = "-";
+  }
+
+  async function onLogin(user){
+    currentUser = user;
+    statusText.textContent = `로그인됨 · ${user.email}`;
+    try{
+      await ensureBoot();
+      toast("로그인 완료!");
+    }catch(e){
+      toast("데이터 초기화 실패: " + e.message);
+    }
+  }
+
+  async function init(){
+    statusText.textContent = "Identity 로딩…";
+    // Identity 위젯이 안 뜨는 경우: (로컬 파일로만 열었거나 Netlify 배포 전)
+    let tries = 0;
+    while(!window.netlifyIdentity && tries < 25){
+      tries++;
+      await sleep(120);
+    }
+
+    if (!window.netlifyIdentity){
+      statusText.textContent = "Identity 미사용(로컬)";
+      setLoggedOutUI();
+      toast("Netlify 배포 + Identity ON 해야 로그인/온라인저장 동작해.");
+      return;
+    }
+
+    window.netlifyIdentity.on("init", user=>{
+      if (user){
+        onLogin(user);
+      } else {
+        currentUser = null;
+        state = null;
+        setLoggedOutUI();
+      }
+    });
+
+    window.netlifyIdentity.on("login", user=>{
+      window.netlifyIdentity.close();
+      onLogin(user);
+    });
+
+    window.netlifyIdentity.on("logout", ()=>{
+      currentUser = null;
+      state = null;
+      setLoggedOutUI();
+      toast("로그아웃 됨");
+    });
+
+    window.netlifyIdentity.init();
+  }
+
+  init();
+
+})();
+</script>
+</body>
+</html>
