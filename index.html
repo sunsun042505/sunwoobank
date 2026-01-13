@@ -577,9 +577,15 @@
    *  API helper (Netlify Functions)
    * ------------------------------*/
   async function api(action, payload = {}, method="POST"){
-    const token = currentUser?.token?.access_token;
+    // Netlify Identity JWT(권장: user.jwt())
+    let token = null;
+    try {
+      token = currentUser ? await currentUser.jwt() : null;
+    } catch {
+      token = currentUser?.token?.access_token || null;
+    }
     const headers = { "Content-Type": "application/json" };
-    if (token) headers["authorization"] = `Bearer ${token}`;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const res = await fetch("/.netlify/functions/bank", {
       method,

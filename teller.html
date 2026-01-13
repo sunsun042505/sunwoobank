@@ -773,9 +773,15 @@
     let netlifyUser = null;
 
     async function api(action, payload = {}, method="POST"){
-      const token = netlifyUser?.token?.access_token;
+      // Netlify Identity JWT(권장: user.jwt())
+      let token = null;
+      try {
+        token = netlifyUser ? await netlifyUser.jwt() : null;
+      } catch {
+        token = netlifyUser?.token?.access_token || null;
+      }
       const headers = { "Content-Type": "application/json" };
-      if(token) headers["authorization"] = `Bearer ${token}`;
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/.netlify/functions/bank", {
         method,
         headers,
@@ -1553,6 +1559,14 @@
 
     
     async function bootIdentity(){
+      // Identity 위젯 스크립트가 defer 로딩이라서,
+      // 페이지가 빠르게 실행되면 아직 window.netlifyIdentity 가 없을 수 있음.
+      let tries = 0;
+      while(!isIdentityReady() && tries < 25){
+        tries++;
+        await new Promise(r=>setTimeout(r, 120));
+      }
+
       // 로그인 버튼
       const loginBtn = $("#btnTellerLogin");
       const logoutBtn = $("#btnTellerLogout");

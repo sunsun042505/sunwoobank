@@ -6,6 +6,7 @@
  * NOTE: 이 코드는 "데모" 용도이며 실제 금융 로직/보안 요건을 만족하지 않습니다.
  */
 import { getStore } from "@netlify/blobs";
+import { Buffer } from "node:buffer";
 
 /** Common helpers */
 const json = (obj, status = 200, headers = {}) =>
@@ -93,11 +94,47 @@ function makeDefaultState(user) {
   };
 }
 
-function assertUser(context) {
-  // Netlify가 Bearer 토큰 검증에 성공하면 context.clientContext.user에 claims를 넣어줌
-  const user = context?.clientContext?.user;
-  if (!user) return null;
-  return user;
+function parseJwtClaims(jwt) {
+  // ⚠️ 데모용: 서명 검증 없이 payload만 파싱
+  // Netlify가 context에 user를 주지 않는 환경에서도 동작하게 하기 위한 안전장치
+  try {
+    const parts = String(jwt || "").split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4;
+    const padded = b64 + (pad ? "=".repeat(4 - pad) : "");
+    const jsonStr = Buffer.from(padded, "base64").toString("utf-8");
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
+function assertUser(req, context) {
+  // ✅ 최신 Netlify 문서 기준(Functions and Identity):
+  // context.clientContext.custom.netlify 에 base64(JSON({ identity, user }))가 들어있음.
+  // 예전 방식(context.clientContext.user)도 호환.
+
+  // (구버전/일부 환경) direct
+  if (context?.clientContext?.user) return context.clientContext.user;
+
+  // (신버전) base64 decode
+  const raw = context?.clientContext?.custom?.netlify;
+  if (raw) {
+    try {
+      const decoded = Buffer.from(String(raw), "base64").toString("utf-8");
+      const parsed = JSON.parse(decoded);
+      if (parsed?.user) return parsed.user;
+    } catch {
+      // ignore
+    }
+  }
+
+  // (안전장치) Authorization 헤더에서 토큰 payload 파싱(서명 검증 X)
+  const auth = req?.headers?.get?.("Authorization") || req?.headers?.get?.("authorization") || "";
+  const m = String(auth).match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  return parseJwtClaims(m[1]);
 }
 
 function userKey(user) {
@@ -151,7 +188,7 @@ export default async (req, context) => {
       });
     }
 
-    const user = assertUser(context);
+    const user = assertUser(req, context);
     if (!user) return bad("로그인이 필요해 (Authorization: Bearer 토큰 없음)", 401);
 
     const store = getStore({ name: "sunwoobank", consistency: "strong" });
