@@ -496,7 +496,13 @@ async function api(action, payload){
     body: JSON.stringify({ action, payload })
   });
   const j = await r.json().catch(()=>({ok:false,error:'bad_json'}));
-  if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
+  if(!r.ok || !j.ok){
+    const parts = [];
+    parts.push(j.error || ('HTTP '+r.status));
+    if(j.message) parts.push(j.message);
+    if(j.detail) parts.push(j.detail);
+    throw new Error(parts.join(' · '));
+  }
   return j;
 }
 
