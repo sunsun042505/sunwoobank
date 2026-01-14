@@ -1,8 +1,9 @@
 {
-  "name": "sunwoobank",
+  "name": "sunwoobank-demo",
   "private": true,
-  "version": "1.0.0",
+  "version": "5.0.0",
+  "type": "commonjs",
   "dependencies": {
-    "@netlify/blobs": "^7.0.0"
+    "@netlify/blobs": "^8.0.0"
   }
 }
