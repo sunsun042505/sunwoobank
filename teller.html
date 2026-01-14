@@ -108,6 +108,9 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
           <div style="min-width:320px">
             <div class="note">선택 고객</div>
             <div class="badge" id="selInfo" style="margin-top:8px;width:100%;display:block">없음</div>
+            <div style="height:10px"></div>
+            <button id="openFormQR" class="btn ok" style="width:100%">아이패드 서식 QR 열기(10분)</button>
+            <div class="note" style="margin-top:8px">고객 선택 후 눌러서 QR을 아이패드로 스캔</div>
           </div>
         </div>
         <div class="hr"></div>
@@ -432,6 +435,7 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 const conn = document.getElementById('conn');
 const sess = document.getElementById('sess');
@@ -499,6 +503,199 @@ async function api(action, payload){
   if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
   return j;
 }
+// ---------- QR 서식 ----------
+const qrModal = document.getElementById('qrModal');
+const qrClose = document.getElementById('qrClose');
+const qrBox = document.getElementById('qrBox');
+const qrLink = document.getElementById('qrLink');
+function openQR(){ qrModal.classList.remove('hidden'); }
+function closeQR(){ qrModal.classList.add('hidden'); qrBox.innerHTML=''; qrLink.textContent=''; }
+if(qrClose) qrClose.onclick = closeQR;
+if(qrModal) qrModal.addEventListener('click', (e)=>{ if(e.target===qrModal) closeQR(); });
+
+const openFormBtn = document.getElementById('openFormQR');
+if(openFormBtn){
+  openFormBtn.onclick = async ()=>{
+    try{
+      if(!selectedCustomer) throw new Error('고객 선택 필요');
+      const firstAcc = (selectedDetail && selectedDetail.accounts && selectedDetail.accounts[0]) ? selectedDetail.accounts[0].account_no : null;
+      const j = await api('form.createToken', { customerId: selectedCustomer.id, accountNo: firstAcc, formType: '창구 서식' });
+      const fullUrl = location.origin + j.url;
+      openQR();
+      qrLink.textContent = fullUrl;
+      const canvas = document.createElement('canvas');
+      await QRCode.toCanvas(canvas, fullUrl, { margin: 1, width: 320 });
+      qrBox.innerHTML = '';
+      qrBox.appendChild(canvas);
+    }catch(e){
+      alert('QR 생성 실패: ' + (e.message || e));
+    }
+  };
+}
+
+// ---------- 상품가입 ----------
+const prodCategory = document.getElementById('prodCategory');
+const prodType = document.getElementById('prodType');
+const prodFields = document.getElementById('prodFields');
+const prodApply = document.getElementById('prodApply');
+const prodMsg = document.getElementById('prodMsg');
+
+function setTypeOptions(){
+  if(!prodCategory || !prodType) return;
+  const c = prodCategory.value;
+  const opts = [];
+  if(c==='예적금'){ opts.push('정기적금','자유적금','주택청약'); }
+  if(c==='대출'){ opts.push('일반대출'); }
+  if(c==='투자'){ opts.push('펀드'); }
+  if(c==='카드'){ opts.push('신용카드','체크카드'); }
+  if(c==='보험'){ opts.push('보험'); }
+  prodType.innerHTML = opts.map(o=>`<option>${o}</option>`).join('');
+  renderFields();
+}
+
+function field(html){ return `<div style="margin-top:10px">${html}</div>`; }
+
+function renderFields(){
+  if(!prodFields) return;
+  const c = prodCategory.value;
+  const t = prodType.value;
+  let html = `<div class="note">입력값</div>`;
+  if(c==='예적금'){
+    html += field(`<label class="note">가입 금액(원)</label><input id="pAmount" class="input" type="number" min="0" placeholder="예: 100000">`);
+    if(t==='주택청약'){
+      html += field(`<label class="note">기간(년)</label><input id="pTerm" class="input" type="number" value="9999" disabled>`);
+      html += `<div class="note" style="margin-top:8px">주택청약은 만기 연도를 9999년으로 고정했어.</div>`;
+    }else{
+      html += field(`<label class="note">기간(개월)</label><input id="pTerm" class="input" type="number" min="1" placeholder="예: 12">`);
+    }
+  } else if(c==='대출'){
+    html += field(`<label class="note">대출 금액(원)</label><input id="pLoanAmount" class="input" type="number" min="0" placeholder="예: 1000000">`);
+    html += `<div class="note" style="margin-top:8px">이자: 고정 4%</div>`;
+  } else if(c==='투자'){
+    html += field(`<label class="note">펀드 상품명</label><input id="pFundName" class="input" placeholder="예: 선우성장펀드">`);
+    html += field(`<label class="note">투자 금액(원)</label><input id="pFundAmount" class="input" type="number" min="0" placeholder="예: 500000">`);
+  } else if(c==='카드'){
+    if(t==='신용카드'){
+      html += field(`<label class="note">한도(원)</label><input id="pCreditLimit" class="input" type="number" min="0" placeholder="예: 1000000">`);
+      html += field(`<button id="pCreditAgree" class="btn2" type="button">신용정보 동의</button> <span id="pAgreeState" class="note" style="margin-left:8px">미동의</span>`);
+    } else {
+      html += `<div class="note" style="margin-top:8px">체크카드는 한도/동의 없음</div>`;
+    }
+    html += field(`<label class="note">국내전용 / 해외겸용</label>
+      <select id="pNetwork" class="input">
+        <option value="DOMESTIC">국내전용</option>
+        <option value="FOREIGN">해외겸용</option>
+      </select>`);
+    html += field(`<div id="pForeignBox" class="hidden">
+      <label class="note">브랜드 선택</label>
+      <select id="pBrand" class="input">
+        <option value="VISA">VISA</option>
+        <option value="MASTER">MASTER</option>
+      </select>
+      <div class="note" style="margin-top:6px">VISA: 4816… / MASTER: 5927…</div>
+    </div>`);
+    html += field(`<label class="note">카드 배송지</label><input id="pShip" class="input" placeholder="예: 서울시 ...">`);
+    html += field(`<label class="note">카드 비밀번호(4자리)</label><input id="pPin" class="input" inputmode="numeric" maxlength="4" placeholder="0000">`);
+    html += `<div class="note" style="margin-top:8px">국내전용 카드번호는 9496…로 시작해.</div>`;
+  } else if(c==='보험'){
+    html += field(`<label class="note">보험 상품명</label><input id="pInsName" class="input" placeholder="예: 선우안심보험">`);
+    html += field(`<label class="note">월 보험료(원)</label><input id="pInsPremium" class="input" type="number" min="0" placeholder="예: 15000">`);
+  }
+  prodFields.innerHTML = html;
+
+  // wire dynamic toggles
+  const netSel = document.getElementById('pNetwork');
+  const foreignBox = document.getElementById('pForeignBox');
+  if(netSel && foreignBox){
+    const sync = ()=>{ foreignBox.classList.toggle('hidden', netSel.value!=='FOREIGN'); };
+    netSel.onchange = sync; sync();
+  }
+  const agreeBtn = document.getElementById('pCreditAgree');
+  if(agreeBtn){
+    agreeBtn.onclick = ()=>{ window.__creditAgree = true; document.getElementById('pAgreeState').textContent='동의 완료'; };
+    window.__creditAgree = false;
+  }
+}
+
+if(prodCategory){
+  prodCategory.onchange = setTypeOptions;
+  prodType.onchange = renderFields;
+  setTypeOptions();
+}
+
+if(prodApply){
+  prodApply.onclick = async ()=>{
+    try{
+      prodMsg.textContent='';
+      if(!selectedCustomer) throw new Error('고객 선택 필요');
+
+      const c = prodCategory.value;
+      const t = prodType.value;
+      const firstAcc = (selectedDetail && selectedDetail.accounts && selectedDetail.accounts[0]) ? selectedDetail.accounts[0].account_no : null;
+
+      let data = {};
+      if(c==='예적금'){
+        const amount = Number(document.getElementById('pAmount').value||0);
+        const term = t==='주택청약' ? 9999 : Number(document.getElementById('pTerm').value||0);
+        if(amount<=0) throw new Error('가입 금액 입력');
+        if(t!=='주택청약' && term<=0) throw new Error('기간 입력');
+        data = { amount, term, termUnit: (t==='주택청약'?'year':'month') };
+      } else if(c==='대출'){
+        const amount = Number(document.getElementById('pLoanAmount').value||0);
+        if(amount<=0) throw new Error('대출 금액 입력');
+        data = { amount, interestRate: 0.04 };
+      } else if(c==='투자'){
+        const fundName = (document.getElementById('pFundName').value||'').trim();
+        const amount = Number(document.getElementById('pFundAmount').value||0);
+        if(!fundName) throw new Error('펀드명 입력');
+        if(amount<=0) throw new Error('투자금 입력');
+        data = { fundName, amount };
+      } else if(c==='카드'){
+        const ship = (document.getElementById('pShip').value||'').trim();
+        const pin = (document.getElementById('pPin').value||'').trim();
+        if(pin.length!==4) throw new Error('비밀번호 4자리');
+        const net = document.getElementById('pNetwork').value;
+        let network = 'DOMESTIC';
+        if(net==='FOREIGN'){
+          network = document.getElementById('pBrand').value; // VISA/MASTER
+        }
+        if(!ship) throw new Error('배송지 입력');
+
+        if(t==='신용카드'){
+          const limit = Number(document.getElementById('pCreditLimit').value||0);
+          if(limit<=0) throw new Error('신용카드 한도 입력');
+          if(!window.__creditAgree) throw new Error('신용정보 동의 필요');
+          data = { cardType:'신용카드', creditLimit: limit, creditAgree:true, network, shippingAddress: ship, pin };
+        } else {
+          data = { cardType:'체크카드', network, shippingAddress: ship, pin };
+        }
+      } else if(c==='보험'){
+        const name = (document.getElementById('pInsName').value||'').trim();
+        const premium = Number(document.getElementById('pInsPremium').value||0);
+        if(!name) throw new Error('보험 상품명 입력');
+        if(premium<=0) throw new Error('보험료 입력');
+        data = { insuranceName:name, premium };
+      }
+
+      const res = await api('teller.product.apply', {
+        customerId: selectedCustomer.id,
+        accountNo: firstAcc,
+        category: c,
+        productType: t,
+        data
+      });
+
+      if(res.card && res.card.card_number){
+        prodMsg.textContent = `완료! 카드번호: ${res.card.card_number} (${res.card.network})`;
+      } else {
+        prodMsg.textContent = '완료! 신청이 저장됨.';
+      }
+    }catch(e){
+      prodMsg.textContent = '실패: ' + (e.message || e);
+    }
+  };
+}
+
 
 document.getElementById('login').onclick = async ()=>{
   tellerCode = (document.getElementById('code').value||'').trim();

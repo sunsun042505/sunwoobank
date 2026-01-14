@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>서식 작성 · 선우뱅크</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--btn:#111827;--ok:#16a34a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;background:rgba(246,247,251,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+h1{font-size:18px;margin:0}
+.small{font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:14px}
+.card h2{font-size:14px;margin:0 0 10px 0}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.btn{border:0;background:var(--btn);color:#fff;padding:12px 14px;border-radius:14px;cursor:pointer}
+.btn2{border:1px solid var(--line);background:#fff;color:var(--text);padding:12px 14px;border-radius:14px;cursor:pointer}
+.note{font-size:12px;color:var(--muted)}
+.badge{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
+.sigWrap{border:1px dashed #cbd5e1;border-radius:16px;padding:10px;background:#fff}
+canvas{width:100%;height:220px;border-radius:12px;background:#f8fafc;touch-action:none}
+.hidden{display:none}
+.done{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:50px 16px}
+.done .check{width:54px;height:54px;border-radius:999px;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.25);display:flex;align-items:center;justify-content:center;color:var(--ok);font-weight:900;font-size:26px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>서식 작성</h1>
+        <div class="small">토큰 유효 10분 · 제출하면 자동 만료</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="loading" class="card">
+    <h2>불러오는 중…</h2>
+    <div class="note" id="loadMsg">잠시만</div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="card">
+      <h2>기본 정보</h2>
+      <div class="row">
+        <span class="badge" id="bName">이름: -</span>
+        <span class="badge" id="bAcc">계좌: -</span>
+        <span class="badge" id="bType">서식: -</span>
+      </div>
+      <div class="hr"></div>
+      <label class="note">요청 유형</label>
+      <select id="reqType" class="input">
+        <option>정보변경 신청</option>
+        <option>계좌비밀번호 변경 신청</option>
+        <option>분실신고</option>
+        <option>한도계좌 해제 신청</option>
+        <option>지급정지 해제 요청</option>
+        <option>기타</option>
+      </select>
+      <div style="height:10px"></div>
+      <label class="note">상세</label>
+      <textarea id="detail" placeholder="요청 내용을 적어줘"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>서명</h2>
+      <div class="note">Apple Pencil로 사인해줘.</div>
+      <div class="hr"></div>
+      <div class="sigWrap">
+        <canvas id="sig"></canvas>
+        <div class="row" style="margin-top:10px">
+          <button id="clear" class="btn2">지우기</button>
+          <span class="note">서명 후 저장(제출)</span>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <button id="submit" class="btn" style="width:100%">저장(제출)</button>
+      <div id="msg" class="note" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="done" class="card hidden">
+    <div class="done">
+      <div class="check">✓</div>
+      <div style="font-weight:900;font-size:18px">서식 작성이 완료되었습니다.</div>
+      <div class="note">이 화면은 닫아도 돼.</div>
+      <button class="btn2" onclick="window.close()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const token = qs.get('token') || '';
+const loading = document.getElementById('loading');
+const loadMsg = document.getElementById('loadMsg');
+const app = document.getElementById('app');
+const done = document.getElementById('done');
+const msg = document.getElementById('msg');
+
+function hide(el){ el.classList.add('hidden'); }
+function show(el){ el.classList.remove('hidden'); }
+
+async function api(action, payload){
+  const r = await fetch('/.netlify/functions/bank', {
+    method:'POST',
+    headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({ action, payload })
+  });
+  const j = await r.json().catch(()=>({ok:false,error:'bad_json'}));
+  if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+// signature
+const canvas = document.getElementById('sig');
+const ctx = canvas.getContext('2d');
+function fitCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#0f172a';
+}
+window.addEventListener('resize', fitCanvas);
+let drawing=false,last=null;
+function pos(e){
+  const r = canvas.getBoundingClientRect();
+  const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+  return { x: p.clientX - r.left, y: p.clientY - r.top };
+}
+function start(e){ drawing=true; last=pos(e); e.preventDefault(); }
+function move(e){
+  if(!drawing) return;
+  const p=pos(e);
+  ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+  last=p; e.preventDefault();
+}
+function end(){ drawing=false; last=null; }
+canvas.addEventListener('pointerdown', start);
+canvas.addEventListener('pointermove', move);
+canvas.addEventListener('pointerup', end);
+canvas.addEventListener('pointercancel', end);
+canvas.addEventListener('touchstart', start, {passive:false});
+canvas.addEventListener('touchmove', move, {passive:false});
+canvas.addEventListener('touchend', end);
+
+document.getElementById('clear').onclick=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); msg.textContent=''; };
+
+let loaded=null;
+async function init(){
+  if(!token){ loadMsg.textContent='토큰이 없어서 열 수 없음'; return; }
+  try{
+    const j=await api('form.get',{token});
+    loaded=j;
+    document.getElementById('bName').textContent='이름: '+j.customer.name;
+    document.getElementById('bAcc').textContent='계좌: '+(j.account?.account_no||'-');
+    document.getElementById('bType').textContent='서식: '+(j.form_type||'창구 서식');
+    hide(loading); show(app); fitCanvas();
+  }catch(e){
+    loadMsg.textContent='열기 실패: '+(e.message||e);
+  }
+}
+document.getElementById('submit').onclick=async ()=>{
+  msg.textContent='';
+  try{
+    const signatureImage=canvas.toDataURL('image/png');
+    const reqType=document.getElementById('reqType').value;
+    const detail=document.getElementById('detail').value.trim();
+    await api('form.submit',{
+      token,
+      formType: loaded?.form_type || '창구 서식',
+      formData:{reqType,detail},
+      signatureImage
+    });
+    hide(app); show(done);
+  }catch(e){
+    msg.textContent='저장 실패: '+(e.message||e);
+  }
+};
+init();
+</script>
+</body>
+</html>

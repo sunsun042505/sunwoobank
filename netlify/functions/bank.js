@@ -239,7 +239,7 @@ exports.handler = async function handler(event) {
 
     const admin = await adminClient();
 
-    const isTeller = action.startsWith("teller.") || action.startsWith("jesingo.") || action.startsWith("restrict.") || action.startsWith("admin.");
+    const isTeller = action.startsWith("teller.") || action.startsWith("jesingo.") || action.startsWith("restrict.") || action.startsWith("admin.") || action === "form.createToken";
     const isCustomer = action.startsWith("customer.");
 
     if (isTeller && !isTellerAllowed(event)) return bad(403, "teller_forbidden");
@@ -583,7 +583,174 @@ exports.handler = async function handler(event) {
       return ok({ customer_no: cust.customer_no, customer_id: cust.id });
     }
 
-    return bad(400, "unknown_action", { action });
+    
+    // ================= iPad 서식(QR 토큰) =================
+    if (action === "form.createToken") {
+      const { customerId, accountNo, formType } = payload;
+      if (!customerId) return bad(400, "customer_required");
+
+      let accountId = null;
+      if (accountNo) {
+        const acc = await getAccountByNo(admin, String(accountNo));
+        if (!acc) return bad(404, "account_not_found");
+        accountId = acc.id;
+      }
+
+      const token = crypto.randomBytes(16).toString("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      const { data, error } = await admin.from("form_tokens").insert({
+        token,
+        customer_id: customerId,
+        account_id: accountId,
+        form_type: formType || "창구 서식",
+        expires_at: expiresAt
+      }).select("*").single();
+      if (error) throw error;
+
+      return ok({ token: data.token, expires_at: data.expires_at, url: `/form.html?token=${data.token}` });
+    }
+
+    if (action === "form.get") {
+      const { token } = payload;
+      if (!token) return bad(400, "token_required");
+
+      const { data: ft, error: e1 } = await admin.from("form_tokens").select("*").eq("token", token).maybeSingle();
+      if (e1) throw e1;
+      if (!ft) return bad(404, "token_not_found");
+      if (ft.used_at) return bad(410, "token_used");
+      if (new Date(ft.expires_at).getTime() < Date.now()) return bad(410, "token_expired");
+
+      const { data: cust, error: ec } = await admin.from("customers").select("id,customer_no,name,phone,email").eq("id", ft.customer_id).single();
+      if (ec) throw ec;
+
+      let account = null;
+      if (ft.account_id) {
+        const { data: acc, error: ea } = await admin.from("accounts").select("id,account_no,type,status").eq("id", ft.account_id).maybeSingle();
+        if (ea) throw ea;
+        account = acc || null;
+      }
+
+      return ok({ token: ft.token, expires_at: ft.expires_at, form_type: ft.form_type, customer: cust, account });
+    }
+
+    if (action === "form.submit") {
+      const { token, formType, formData, signatureImage } = payload;
+      if (!token) return bad(400, "token_required");
+
+      const { data: ft, error: e1 } = await admin.from("form_tokens").select("*").eq("token", token).maybeSingle();
+      if (e1) throw e1;
+      if (!ft) return bad(404, "token_not_found");
+      if (ft.used_at) return bad(410, "token_used");
+      if (new Date(ft.expires_at).getTime() < Date.now()) return bad(410, "token_expired");
+
+      const { data: form, error: ef } = await admin.from("forms").insert({
+        customer_id: ft.customer_id,
+        account_id: ft.account_id,
+        form_type: formType || ft.form_type || "창구 서식",
+        form_data: formData || {},
+        signature_image: signatureImage || null
+      }).select("*").single();
+      if (ef) throw ef;
+
+      const { error: eu } = await admin.from("form_tokens").update({ used_at: nowISO() }).eq("token", token);
+      if (eu) throw eu;
+
+      return ok({ form_id: form.id });
+    }
+
+    // ================= 상품가입(텔러) =================
+    if (action === "teller.product.apply") {
+      const { customerId, accountNo, category, productType, data } = payload;
+      if (!customerId) return bad(400, "customer_required");
+      if (!category || !productType) return bad(400, "product_required");
+
+      let accountId = null;
+      if (accountNo) {
+        const acc = await getAccountByNo(admin, String(accountNo));
+        if (!acc) return bad(404, "account_not_found");
+        accountId = acc.id;
+      }
+
+      // special: 카드 발급이면 카드번호 생성해서 cards 테이블에도 저장
+      if (category === "카드") {
+        const cardType = (data && data.cardType) || "체크카드";
+        const network = (data && data.network) || "DOMESTIC"; // DOMESTIC/VISA/MASTER
+        const limit = data && data.creditLimit ? Number(data.creditLimit) : null;
+        const pin = (data && data.pin) ? String(data.pin) : "0000";
+        const shipping = (data && data.shippingAddress) ? String(data.shippingAddress) : "";
+
+        // BIN prefix
+        const prefix = network === "VISA" ? "4816" : (network === "MASTER" ? "5927" : "9496");
+        const genCardNumber = (prefix)=>{
+          // generate 16-digit with luhn check
+          const digits = prefix.split("").map(Number);
+          while (digits.length < 15) digits.push(Math.floor(Math.random()*10));
+          // compute check digit
+          const sum = digits.slice().reverse().map((d,i)=>{
+            if (i%2===0) return d;
+            let x = d*2; return x>9?x-9:x;
+          }).reduce((a,b)=>a+b,0);
+          const check = (10 - (sum % 10)) % 10;
+          return digits.join("") + String(check);
+        };
+        let cardNumber = genCardNumber(prefix);
+
+        // avoid collision (rare)
+        for (let i=0;i<5;i++){
+          const { data: exist } = await admin.from("cards").select("id").eq("card_number", cardNumber).maybeSingle();
+          if (!exist) break;
+          cardNumber = genCardNumber(prefix);
+        }
+
+        const { data: cRow, error: ce } = await admin.from("cards").insert({
+          customer_id: customerId,
+          card_type: cardType,
+          network,
+          card_number: cardNumber,
+          credit_limit: limit,
+          pin_hash: crypto.createHash("sha256").update(pin).digest("hex"),
+          shipping_address: shipping
+        }).select("*").single();
+        if (ce) throw ce;
+
+        const appData = Object.assign({}, data || {}, { issuedCardNumber: cardNumber });
+
+        const { data: appRow, error: ae } = await admin.from("product_applications").insert({
+          customer_id: customerId,
+          account_id: accountId,
+          category,
+          product_type: productType,
+          data: appData
+        }).select("*").single();
+        if (ae) throw ae;
+
+        return ok({ application: appRow, card: { card_number: cRow.card_number, network: cRow.network, card_type: cRow.card_type }});
+      }
+
+      // normalize loan interest fixed 4%
+      let finalData = data || {};
+      if (category === "대출") {
+        finalData = Object.assign({}, finalData, { interestRate: 0.04, interestType: "고정(4%)" });
+      }
+      // 주택청약 만기 9999년
+      if (category === "예적금" && productType === "주택청약") {
+        finalData = Object.assign({}, finalData, { maturityYear: 9999 });
+      }
+
+      const { data: row, error } = await admin.from("product_applications").insert({
+        customer_id: customerId,
+        account_id: accountId,
+        category,
+        product_type: productType,
+        data: finalData
+      }).select("*").single();
+      if (error) throw error;
+
+      return ok({ application: row });
+    }
+
+return bad(400, "unknown_action", { action });
   } catch (err) {
     return bad(500, "server_error", { message: String(err?.message || err) });
   }

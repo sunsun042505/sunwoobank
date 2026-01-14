@@ -110,3 +110,69 @@ on public.customers for select
 using (
   exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.customer_id = customers.id)
 );
+
+-- ========= iPad 서식(QR 토큰) =========
+create table if not exists public.form_tokens (
+  token text primary key,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  account_id uuid references public.accounts(id) on delete set null,
+  form_type text not null default '창구 서식',
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
+create table if not exists public.forms (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  account_id uuid references public.accounts(id) on delete set null,
+  form_type text not null,
+  form_data jsonb not null default '{}'::jsonb,
+  signature_image text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.form_tokens enable row level security;
+alter table public.forms enable row level security;
+
+drop policy if exists "customer_read_own_forms" on public.forms;
+create policy "customer_read_own_forms"
+on public.forms for select
+using (
+  exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.customer_id = forms.customer_id)
+);
+
+
+-- ========= 상품가입(텔러) =========
+create table if not exists public.product_applications (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  account_id uuid references public.accounts(id) on delete set null,
+  category text not null, -- 예적금/대출/투자/카드/보험
+  product_type text not null, -- 세부
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.cards (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  card_type text not null, -- 체크/신용
+  network text not null, -- DOMESTIC/VISA/MASTER
+  card_number text not null unique,
+  credit_limit numeric,
+  pin_hash text,
+  shipping_address text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.product_applications enable row level security;
+alter table public.cards enable row level security;
+
+-- 고객은 본인 카드 조회만
+drop policy if exists "customer_read_own_cards" on public.cards;
+create policy "customer_read_own_cards"
+on public.cards for select
+using (
+  exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.customer_id = cards.customer_id)
+);
