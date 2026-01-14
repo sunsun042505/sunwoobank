@@ -78,7 +78,8 @@ alter table public.transactions enable row level security;
 alter table public.jesingo enable row level security;
 
 -- Read-only policies for customer (server functions with service_role bypass RLS anyway)
-create policy if not exists "customer_read_own_accounts"
+drop policy if exists "customer_read_own_accounts" on public.accounts;
+create policy "customer_read_own_accounts"
 on public.accounts for select
 using (
   exists (
@@ -87,7 +88,8 @@ using (
   )
 );
 
-create policy if not exists "customer_read_own_transactions"
+drop policy if exists "customer_read_own_transactions" on public.transactions;
+create policy "customer_read_own_transactions"
 on public.transactions for select
 using (
   exists (
@@ -97,11 +99,13 @@ using (
   )
 );
 
-create policy if not exists "customer_read_own_profile"
+drop policy if exists "customer_read_own_profile" on public.profiles;
+create policy "customer_read_own_profile"
 on public.profiles for select
 using (user_id = auth.uid());
 
-create policy if not exists "customer_read_own_customer"
+drop policy if exists "customer_read_own_customer" on public.customers;
+create policy "customer_read_own_customer"
 on public.customers for select
 using (
   exists (select 1 from public.profiles p where p.user_id = auth.uid() and p.customer_id = customers.id)
