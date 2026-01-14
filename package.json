@@ -1,10 +1,5 @@
 {
-  "name": "sunwoobank-netlify-demo",
-  "private": true,
-  "version": "0.0.1",
-  "description": "Static banking demo (customer + teller) using Netlify Identity + Functions + Blobs",
-  "type": "module",
   "dependencies": {
-    "@netlify/blobs": "^10.4.1"
+    "@netlify/blobs": "^6.0.0"
   }
 }
