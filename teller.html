@@ -470,6 +470,8 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js">
+}
+
 // ---------- 상품가입 ----------
 function renderProducts(){
   const box = document.getElementById('prodBox');
@@ -885,18 +887,8 @@ async function api(action, payload){
   if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
   return j;
 }
-// ---------- QR 서식 ----------
-const qrModal = document.getElementById('qrModal');
-const qrClose = document.getElementById('qrClose');
-const qrBox = document.getElementById('qrBox');
-const qrLink = document.getElementById('qrLink');
-function openQR(){ qrModal.classList.remove('hidden'); }
-function closeQR(){ qrModal.classList.add('hidden'); qrBox.innerHTML=''; qrLink.textContent=''; }
-if(qrClose) qrClose.onclick = closeQR;
-if(qrModal) qrModal.addEventListener('click', (e)=>{ if(e.target===qrModal) closeQR(); });
-
-
 // ---------- QR (iPad 서식) ----------
+if(!window.__SUNWOO_QR_INIT__){ window.__SUNWOO_QR_INIT__ = true;
 const qrModal = document.getElementById('qrModal');
 const qrClose = document.getElementById('qrClose');
 const qrBox = document.getElementById('qrBox');
@@ -920,10 +912,7 @@ if(openFormBtn){
       const accList = (selectedDetail && selectedDetail.accounts) ? selectedDetail.accounts : [];
       const firstAcc = accList[0] ? accList[0].account_no : null;
 
-      // open modal immediately with loading
-      openQR();
       if(qrBox) qrBox.innerHTML = '<div class="note">QR 생성 중…</div>';
-
       const j = await api('form.createToken', { customerId: selectedCustomer.id, accountNo: firstAcc, formType: '창구 서식' });
       const fullUrl = location.origin + j.url;
       if(qrLink) qrLink.textContent = fullUrl;
@@ -936,6 +925,8 @@ if(openFormBtn){
       alert('QR 생성 실패: ' + (e.message || e));
     }
   };
+}
+
 }
 
 // ---------- 상품가입 ----------
@@ -1417,6 +1408,8 @@ document.getElementById('eBtn').onclick = async ()=>{
     document.getElementById('eMsg').textContent = '실패: ' + e.message;
   }
 };
+
+}
 
 // ---------- 상품가입 ----------
 function renderProducts(){
