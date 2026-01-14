@@ -84,6 +84,7 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
           <button class="btn" data-tab="cash">입출금/이체</button>
           <button class="btn" data-tab="jes">제신고(변경/분실/비번)</button>
           <button class="btn" data-tab="restrict">거래제한/법적조치</button>
+          <button class="btn" data-tab="prod">상품가입</button>
           <button class="btn" data-tab="enroll">인터넷뱅킹 가입</button>
         </div>
         <div class="hr"></div>
@@ -401,7 +402,16 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
         <div id="rPreview" class="badge" style="display:block;width:100%">-</div>
       </div>
 
-      <div id="tab-enroll" class="hidden">
+      
+      <div id="tab-prod" class="hidden">
+        <h2>상품가입</h2>
+        <div class="note">선택 고객 기준으로 상품 가입을 처리해. (예적금/대출/투자/카드/보험)</div>
+        <div class="hr"></div>
+        <div id="prodBox"></div>
+        <div id="prodMsg" class="note" style="margin-top:10px"></div>
+      </div>
+
+<div id="tab-enroll" class="hidden">
         <h2>인터넷뱅킹 가입(계정 생성, invite-only)</h2>
         <div class="note">Supabase Auth 계정 생성 + email_confirm 자동 true</div>
         <div class="hr"></div>
