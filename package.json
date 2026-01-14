@@ -1,9 +1,9 @@
 {
-  "name": "sunwoobank-demo",
+  "name": "sunwoobank-supabase-demo",
   "private": true,
-  "version": "5.0.0",
+  "version": "1.0.0",
   "type": "commonjs",
   "dependencies": {
-    "@netlify/blobs": "^8.0.0"
+    "@supabase/supabase-js": "^2.45.4"
   }
 }

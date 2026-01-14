@@ -1,406 +1,590 @@
-const { getStore } = require("@netlify/blobs");
 const crypto = require("crypto");
-const https = require("https");
+const { createClient } = require("@supabase/supabase-js");
 
-function jsonRes(statusCode, obj, extraHeaders = {}) {
+function json(statusCode, obj) {
   return {
     statusCode,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-      ...extraHeaders
     },
     body: JSON.stringify(obj),
   };
 }
+function ok(obj) { return json(200, { ok: true, ...obj }); }
+function bad(statusCode, error, extra = {}) { return json(statusCode, { ok: false, error, ...extra }); }
 
-function nowISO() {
-  return new Date().toISOString();
+function getHeader(event, name) {
+  const h = event.headers || {};
+  const key = Object.keys(h).find(k => k.toLowerCase() === name.toLowerCase());
+  return key ? h[key] : undefined;
 }
 
-function safeParseJson(s, fallback) {
-  try { return JSON.parse(s); } catch { return fallback; }
+function nowISO() { return new Date().toISOString(); }
+
+function sha256Hex(s) {
+  return crypto.createHash("sha256").update(s).digest("hex");
 }
 
-async function readDB(store) {
-  const raw = await store.get("db.json");
-  if (!raw) return { meta: { createdAt: nowISO(), updatedAt: nowISO(), version: 5 }, customers: {}, accounts: {}, txs: [], jeSingo: [], identity: { emailToCustomerId: {} } };
-  return safeParseJson(raw, { meta: { createdAt: nowISO(), updatedAt: nowISO(), version: 5 }, customers: {}, accounts: {}, txs: [], jeSingo: [], identity: { emailToCustomerId: {} } });
+function pbkdf2Hash(pin) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const iter = 150000;
+  const dk = crypto.pbkdf2Sync(pin, salt, iter, 32, "sha256").toString("hex");
+  return `pbkdf2$sha256$${iter}$${salt}$${dk}`;
 }
 
-async function writeDB(store, db) {
-  db.meta = db.meta || {};
-  db.meta.updatedAt = nowISO();
-  db.meta.version = 5;
-  await store.set("db.json", JSON.stringify(db));
+function pbkdf2Verify(pin, stored) {
+  if (!stored || typeof stored !== "string") return false;
+  const parts = stored.split("$");
+  if (parts.length !== 6) return false;
+  const iter = parseInt(parts[3], 10);
+  const salt = parts[4];
+  const dk = parts[5];
+  const test = crypto.pbkdf2Sync(pin, salt, iter, 32, "sha256").toString("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(test, "hex"), Buffer.from(dk, "hex"));
+  } catch {
+    return false;
+  }
 }
 
-function genId(prefix) {
-  return `${prefix}-${crypto.randomBytes(4).toString("hex")}`;
+function randAccountNo() {
+  const a = Math.floor(1000 + Math.random() * 9000);
+  const b = Math.floor(1000 + Math.random() * 9000);
+  return `110-${a}-${b}`;
+}
+function nextCustomerNo(count) {
+  return `C-${1001 + (count || 0)}`;
 }
 
-function requireTeller(event) {
-  const code = (event.headers["x-teller-code"] || event.headers["X-Teller-Code"] || "").toString().trim();
-  if (code !== "0612") return false;
-  return true;
+async function requireSupabaseEnv() {
+  const url = process.env.SUPABASE_URL;
+  const anon = process.env.SUPABASE_ANON_KEY;
+  const srv = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !anon || !srv) throw new Error("missing_supabase_env");
+  return { url, anon, srv };
 }
 
-function getNetlifyUser(context) {
-  // Netlify passes user info here when Identity JWT is provided.
-  // Prefer official context.user.
-  const u = context?.clientContext?.user;
-  if (u && (u.sub || u.email)) return u;
+async function adminClient() {
+  const { url, srv } = await requireSupabaseEnv();
+  return createClient(url, srv, { auth: { persistSession: false } });
+}
 
-  // Some deployments provide base64 JSON here.
-  const custom = context?.clientContext?.custom?.netlify;
-  if (custom) {
-    try {
-      const decoded = JSON.parse(Buffer.from(custom, "base64").toString("utf8"));
-      if (decoded && decoded.user) return decoded.user;
-    } catch {}
+function isTellerAllowed(event) {
+  const code = (getHeader(event, "x-teller-code") || "").toString().trim();
+  const expect = (process.env.TELLER_CODE || "0612").toString().trim();
+  return code === expect;
+}
+
+async function requireCustomer(event, admin) {
+  const auth = (getHeader(event, "authorization") || "").toString();
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  const jwt = m[1];
+  const { data, error } = await admin.auth.getUser(jwt);
+  if (error || !data || !data.user) return null;
+  return { jwt, user: data.user };
+}
+
+async function getProfileByUserId(admin, userId) {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("user_id,customer_id,role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function getAccountByNo(admin, accountNo) {
+  const { data, error } = await admin
+    .from("accounts")
+    .select("*")
+    .eq("account_no", accountNo)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function updateAccount(admin, id, patch) {
+  patch.updated_at = nowISO();
+  const { data, error } = await admin
+    .from("accounts")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function insertTx(admin, accountId, kind, amount, memo = "") {
+  const { data, error } = await admin
+    .from("transactions")
+    .insert({
+      account_id: accountId,
+      kind,
+      amount: Number(amount),
+      memo: memo || "",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function sumTodayOutflow(admin, accountId) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const iso = start.toISOString();
+  const { data, error } = await admin
+    .from("transactions")
+    .select("amount")
+    .eq("account_id", accountId)
+    .eq("kind", "이체출금")
+    .gte("created_at", iso);
+  if (error) throw error;
+  return (data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+}
+
+async function findAuthUserIdByEmail(admin, email) {
+  let page = 1;
+  const perPage = 200;
+  while (page <= 10) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data.users || [];
+    const u = users.find(x => (x.email || "").toLowerCase() === email.toLowerCase());
+    if (u) return u.id;
+    if (users.length < perPage) break;
+    page += 1;
   }
   return null;
 }
 
-function httpsRequestJson({ hostname, path, method, headers, body }) {
-  return new Promise((resolve, reject) => {
-    const req = https.request({ hostname, path, method, headers }, (res) => {
-      let data = "";
-      res.on("data", (c) => data += c);
-      res.on("end", () => {
-        resolve({ status: res.statusCode || 0, body: data });
-      });
-    });
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
-  });
+async function ensureCustomerForEmail(admin, email, nameGuess = "", phoneGuess = "") {
+  const { data: existing, error: e1 } = await admin
+    .from("customers")
+    .select("*")
+    .eq("email", email)
+    .maybeSingle();
+  if (e1) throw e1;
+  if (existing) {
+    const patch = { updated_at: nowISO() };
+    if (nameGuess) patch.name = nameGuess;
+    if (phoneGuess) patch.phone = phoneGuess;
+    await admin.from("customers").update(patch).eq("id", existing.id);
+    return existing;
+  }
+
+  const { count, error: eCount } = await admin
+    .from("customers")
+    .select("*", { count: "exact", head: true });
+  if (eCount) throw eCount;
+  const customer_no = nextCustomerNo(count);
+
+  const salt = process.env.RRN_SALT || "demo_salt_change_me";
+  const synthetic = "000000" + String(Math.floor(1000000 + Math.random() * 9000000));
+  const rrn_hash = sha256Hex(`${salt}:${synthetic}`);
+  const rrn_birth6 = "000000";
+
+  const { data, error } = await admin
+    .from("customers")
+    .insert({
+      customer_no,
+      name: nameGuess || email.split("@")[0],
+      rrn_hash,
+      rrn_birth6,
+      phone: phoneGuess || "",
+      email,
+      address: "",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-async function createIdentityUser({ siteUrl, adminToken, email, password, fullName }) {
-  // Netlify Identity admin endpoint (GoTrue admin/users)
-  // Uses admin token from env: IDENTITY_ADMIN_TOKEN
-  const url = new URL(siteUrl);
-  const hostname = url.hostname;
-  const payload = JSON.stringify({
-    email,
-    password,
-    user_metadata: { full_name: fullName }
-  });
-
-  const res = await httpsRequestJson({
-    hostname,
-    path: "/.netlify/identity/admin/users",
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "accept": "application/json",
-      "authorization": `Bearer ${adminToken}`,
-      "content-length": Buffer.byteLength(payload)
-    },
-    body: payload
-  });
-
-  return res;
+async function ensureProfile(admin, userId, customerId) {
+  const p = await getProfileByUserId(admin, userId);
+  if (p) return p;
+  const { data, error } = await admin
+    .from("profiles")
+    .insert({ user_id: userId, customer_id: customerId, role: "customer" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-exports.handler = async function handler(event, context) {
+exports.handler = async function handler(event) {
   try {
-    // ping
-    if (event.httpMethod === "GET" && event.queryStringParameters && event.queryStringParameters.ping === "1") {
-      return { statusCode: 200, headers: { "cache-control": "no-store" }, body: "pong" };
+    if (event.httpMethod === "GET") {
+      const q = event.queryStringParameters || {};
+      if (q.ping === "1") return { statusCode: 200, headers: { "cache-control": "no-store" }, body: "pong" };
+      if (q.config === "1") {
+        const { url, anon } = await requireSupabaseEnv();
+        return json(200, { ok: true, supabaseUrl: url, supabaseAnonKey: anon });
+      }
+      return bad(404, "not_found");
     }
 
-    const store = getStore("sunwoobank");
-    const body = safeParseJson(event.body || "{}", {});
-    const action = (body.action || "").toString();
+    if (event.httpMethod !== "POST") return bad(405, "method_not_allowed");
+
+    let body = {};
+    try { body = JSON.parse(event.body || "{}"); } catch { return bad(400, "bad_json"); }
+    const action = String(body.action || "");
     const payload = body.payload || {};
+    if (!action) return bad(400, "missing_action");
 
-    // Basic routing: customer actions require Identity JWT; teller actions require x-teller-code 0612.
-    const isTellerAction = action.startsWith("teller.") || action.startsWith("jeSingo.") || action.startsWith("admin.");
-    const isCustomerAction = action.startsWith("customer.");
+    const admin = await adminClient();
 
-    if (!action) return jsonRes(400, { ok: false, error: "missing_action" });
+    const isTeller = action.startsWith("teller.") || action.startsWith("jesingo.") || action.startsWith("restrict.") || action.startsWith("admin.");
+    const isCustomer = action.startsWith("customer.");
 
-    // Auth checks
-    if (isTellerAction && !requireTeller(event)) {
-      return jsonRes(403, { ok: false, error: "teller_forbidden" });
+    if (isTeller && !isTellerAllowed(event)) return bad(403, "teller_forbidden");
+
+    let customerCtx = null;
+    if (isCustomer) {
+      customerCtx = await requireCustomer(event, admin);
+      if (!customerCtx) return bad(401, "unauthorized");
     }
 
-    let user = null;
-    if (isCustomerAction) {
-      user = getNetlifyUser(context);
-      if (!user || !user.email) return jsonRes(401, { ok: false, error: "unauthorized" });
-    }
-
-    // Load DB
-    const db = await readDB(store);
-
-    // Helpers
-    function ensureCustomerForEmail(email) {
-      const map = db.identity?.emailToCustomerId || (db.identity = { emailToCustomerId: {} }).emailToCustomerId;
-      if (map[email]) return map[email];
-
-      const cid = `C-${String(Object.keys(db.customers).length + 1001)}`;
-      db.customers[cid] = {
-        id: cid,
-        name: email.split("@")[0],
-        email,
-        phone: "",
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      };
-      // Auto account
-      const accId = genId("A");
-      const acctNo = `110-${Math.floor(1000 + Math.random()*9000)}-${Math.floor(1000 + Math.random()*9000)}`;
-      db.accounts[accId] = {
-        id: accId,
-        customerId: cid,
-        accountNo: acctNo,
-        type: "입출금",
-        status: "정상",
-        balance: 150000,
-        flags: { paymentStop: false, seizure: false, provisionalSeizure: false },
-        holds: [],
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      };
-      map[email] = cid;
-      return cid;
-    }
-
-    function findAccountByNo(accountNo) {
-      const acc = Object.values(db.accounts).find(a => a.accountNo === accountNo);
-      return acc || null;
-    }
-
-    function addTx({ kind, amount, fromAccId, toAccId, memo }) {
-      const tx = {
-        id: genId("T"),
-        kind, // 입금/출금/이체
-        amount,
-        fromAccId: fromAccId || null,
-        toAccId: toAccId || null,
-        memo: memo || "",
-        at: nowISO()
-      };
-      db.txs.unshift(tx);
-      return tx;
-    }
-
-    // -------- Customer actions --------
+    // ---------------- CUSTOMER ----------------
     if (action === "customer.bootstrap") {
-      const cid = ensureCustomerForEmail(user.email);
-      const accounts = Object.values(db.accounts).filter(a => a.customerId === cid).map(a => ({
-        id: a.id, accountNo: a.accountNo, type: a.type, status: a.status, balance: a.balance, flags: a.flags
-      }));
-      const txs = db.txs.filter(tx => {
-        const ids = new Set(accounts.map(a => a.id));
-        return ids.has(tx.fromAccId) || ids.has(tx.toAccId);
-      }).slice(0, 30);
-      await writeDB(store, db);
-      return jsonRes(200, { ok: true, customerId: cid, accounts, txs });
+      const userId = customerCtx.user.id;
+      const prof = await getProfileByUserId(admin, userId);
+      if (!prof) return bad(404, "no_profile");
+
+      const { data: cust, error: ec } = await admin.from("customers").select("*").eq("id", prof.customer_id).single();
+      if (ec) throw ec;
+
+      const { data: accounts, error: ea } = await admin.from("accounts").select("*").eq("customer_id", prof.customer_id).order("created_at", { ascending: true });
+      if (ea) throw ea;
+
+      const accIds = (accounts || []).map(a => a.id);
+      let txs = [];
+      if (accIds.length) {
+        const { data: txData, error: et } = await admin.from("transactions").select("*").in("account_id", accIds).order("created_at", { ascending: false }).limit(30);
+        if (et) throw et;
+        txs = txData || [];
+      }
+
+      return ok({
+        customer: { customer_no: cust.customer_no, name: cust.name, email: cust.email, phone: cust.phone, address: cust.address },
+        accounts: (accounts || []).map(a => ({ account_no: a.account_no, type: a.type, status: a.status, balance: a.balance, flags: a.flags, holds: a.holds })),
+        txs
+      });
     }
 
     if (action === "customer.transfer") {
       const { fromAccountNo, toAccountNo, amount, memo } = payload;
       const amt = Number(amount);
-      if (!fromAccountNo || !toAccountNo || !Number.isFinite(amt) || amt <= 0) return jsonRes(400, { ok:false, error:"bad_request" });
+      if (!fromAccountNo || !toAccountNo || !Number.isFinite(amt) || amt <= 0) return bad(400, "bad_request");
 
-      const cid = ensureCustomerForEmail(user.email);
-      const from = findAccountByNo(fromAccountNo);
-      const to = findAccountByNo(toAccountNo);
-      if (!from || !to) return jsonRes(404, { ok:false, error:"account_not_found" });
-      if (from.customerId !== cid) return jsonRes(403, { ok:false, error:"not_owner" });
+      const userId = customerCtx.user.id;
+      const prof = await getProfileByUserId(admin, userId);
+      if (!prof) return bad(404, "no_profile");
 
-      // blocks
-      if (from.flags?.paymentStop) return jsonRes(409, { ok:false, error:"payment_stopped" });
-      if (from.status !== "정상") return jsonRes(409, { ok:false, error:"account_blocked" });
+      const fromAcc = await getAccountByNo(admin, String(fromAccountNo));
+      const toAcc = await getAccountByNo(admin, String(toAccountNo));
+      if (!fromAcc || !toAcc) return bad(404, "account_not_found");
+      if (fromAcc.customer_id !== prof.customer_id) return bad(403, "not_owner");
 
-      if (from.balance < amt) return jsonRes(409, { ok:false, error:"insufficient" });
+      const flags = fromAcc.flags || {};
+      if (fromAcc.status !== "정상") return bad(409, "account_blocked");
+      if (flags.paymentStop) return bad(409, "payment_stopped");
+      if (Number(fromAcc.balance) < amt) return bad(409, "insufficient");
 
-      from.balance -= amt;
-      to.balance += amt;
-      from.updatedAt = nowISO();
-      to.updatedAt = nowISO();
-      const tx = addTx({ kind: "이체", amount: amt, fromAccId: from.id, toAccId: to.id, memo });
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, tx });
+      if (flags.limitAccount) {
+        if (amt > 300000) return bad(409, "limit_account_txn_limit", { limit: 300000 });
+        const out = await sumTodayOutflow(admin, fromAcc.id);
+        if (out + amt > 1000000) return bad(409, "limit_account_daily_limit", { limit: 1000000, today: out });
+      }
+
+      await updateAccount(admin, fromAcc.id, { balance: Number(fromAcc.balance) - amt });
+      await updateAccount(admin, toAcc.id, { balance: Number(toAcc.balance) + amt });
+
+      const txOut = await insertTx(admin, fromAcc.id, "이체출금", amt, memo || `to ${toAcc.account_no}`);
+      const txIn = await insertTx(admin, toAcc.id, "이체입금", amt, memo || `from ${fromAcc.account_no}`);
+
+      return ok({ txOut, txIn });
     }
 
-    // -------- Teller actions --------
-    if (action === "teller.ping") {
-      return jsonRes(200, { ok:true, pong:true, at: nowISO() });
-    }
+    // ---------------- TELLER ----------------
+    if (action === "teller.searchCustomers") {
+      const { name, phone, email } = payload;
+      let q = admin.from("customers").select("id,customer_no,name,rrn_birth6,phone,email,address,created_at").order("created_at", { ascending: false }).limit(30);
+      if (name) q = q.ilike("name", `%${name}%`);
+      if (phone) q = q.ilike("phone", `%${phone}%`);
+      if (email) q = q.ilike("email", `%${email}%`);
 
-    if (action === "teller.list") {
-      const customers = Object.values(db.customers).slice(0, 200);
-      const accounts = Object.values(db.accounts).slice(0, 500);
-      const jeSingo = db.jeSingo.slice(0, 200);
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, customers, accounts, jeSingo, txs: db.txs.slice(0, 50) });
+      const { data, error } = await q;
+      if (error) throw error;
+      return ok({ customers: data || [] });
     }
 
     if (action === "teller.createCustomer") {
-      const { name, phone, email } = payload;
-      if (!name) return jsonRes(400, { ok:false, error:"name_required" });
-      const cid = `C-${String(Object.keys(db.customers).length + 1001)}`;
-      db.customers[cid] = { id: cid, name, phone: phone||"", email: email||"", createdAt: nowISO(), updatedAt: nowISO() };
-      if (email) (db.identity?.emailToCustomerId || (db.identity = { emailToCustomerId: {} }).emailToCustomerId)[email] = cid;
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, customer: db.customers[cid] });
+      const { name, rrn, phone, email, address } = payload;
+      if (!name || !rrn) return bad(400, "name_rrn_required");
+
+      const rrnStr = String(rrn).replace(/[^0-9]/g, "");
+      if (rrnStr.length !== 13) return bad(400, "rrn_format_13_digits");
+
+      const salt = process.env.RRN_SALT || "demo_salt_change_me";
+      const rrn_hash = sha256Hex(`${salt}:${rrnStr}`);
+      const rrn_birth6 = rrnStr.slice(0, 6);
+
+      const { count, error: eCount } = await admin.from("customers").select("*", { count: "exact", head: true });
+      if (eCount) throw eCount;
+      const customer_no = nextCustomerNo(count);
+
+      const { data, error } = await admin.from("customers").insert({
+        customer_no,
+        name,
+        rrn_hash,
+        rrn_birth6,
+        phone: phone || "",
+        email: email || null,
+        address: address || ""
+      }).select("id,customer_no,name,rrn_birth6,phone,email,address,created_at").single();
+
+      if (error) return bad(409, "duplicate_customer", { detail: error.message });
+      return ok({ customer: data });
     }
 
     if (action === "teller.createAccount") {
-      const { customerId, type, initialBalance, accountNo } = payload;
-      if (!customerId || !db.customers[customerId]) return jsonRes(404, { ok:false, error:"customer_not_found" });
-      const accId = genId("A");
-      const acctNo = accountNo || `110-${Math.floor(1000 + Math.random()*9000)}-${Math.floor(1000 + Math.random()*9000)}`;
-      db.accounts[accId] = {
-        id: accId,
-        customerId,
-        accountNo: acctNo,
+      const { customerId, type, initialBalance, accountNo, accountPin } = payload;
+      if (!customerId) return bad(400, "customer_required");
+      const pin = String(accountPin || "").trim();
+      if (pin.length < 4) return bad(400, "account_pin_required_4+");
+
+      const acctNo = accountNo ? String(accountNo).trim() : randAccountNo();
+      const flags = { limitAccount: true, paymentStop: false, seizure: false, provisionalSeizure: false };
+
+      const { data, error } = await admin.from("accounts").insert({
+        customer_id: customerId,
+        account_no: acctNo,
         type: type || "입출금",
         status: "정상",
-        balance: Number(initialBalance)||0,
-        flags: { paymentStop: false, seizure: false, provisionalSeizure: false },
+        balance: Number(initialBalance || 0),
+        flags,
         holds: [],
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      };
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, account: db.accounts[accId] });
+        account_pin_hash: pbkdf2Hash(pin)
+      }).select("*").single();
+
+      if (error) return bad(409, "account_create_failed", { detail: error.message });
+      return ok({ account: data });
     }
 
     if (action === "teller.cashInOut") {
       const { accountNo, kind, amount, memo } = payload;
-      const acc = findAccountByNo(accountNo);
       const amt = Number(amount);
-      if (!acc || !Number.isFinite(amt) || amt <= 0) return jsonRes(400, { ok:false, error:"bad_request" });
-      if (acc.flags?.paymentStop && (kind === "출금" || kind === "이체")) return jsonRes(409, { ok:false, error:"payment_stopped" });
-      if (acc.status !== "정상") return jsonRes(409, { ok:false, error:"account_blocked" });
+      if (!accountNo || !Number.isFinite(amt) || amt <= 0) return bad(400, "bad_request");
 
-      if (kind === "입금") acc.balance += amt;
-      else if (kind === "출금") {
-        if (acc.balance < amt) return jsonRes(409, { ok:false, error:"insufficient" });
-        acc.balance -= amt;
-      } else return jsonRes(400, { ok:false, error:"bad_kind" });
+      const acc = await getAccountByNo(admin, String(accountNo));
+      if (!acc) return bad(404, "account_not_found");
 
-      acc.updatedAt = nowISO();
-      const tx = addTx({ kind, amount: amt, toAccId: kind==="입금"?acc.id:null, fromAccId: kind==="출금"?acc.id:null, memo });
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, tx, balance: acc.balance });
+      const flags = acc.flags || {};
+      if (acc.status !== "정상") return bad(409, "account_blocked");
+      if (flags.paymentStop && kind === "출금") return bad(409, "payment_stopped");
+
+      if (kind === "입금") {
+        const updated = await updateAccount(admin, acc.id, { balance: Number(acc.balance) + amt });
+        const tx = await insertTx(admin, acc.id, "입금", amt, memo || "");
+        return ok({ tx, balance: updated.balance });
+      }
+      if (kind === "출금") {
+        if (Number(acc.balance) < amt) return bad(409, "insufficient");
+        const updated = await updateAccount(admin, acc.id, { balance: Number(acc.balance) - amt });
+        const tx = await insertTx(admin, acc.id, "출금", amt, memo || "");
+        return ok({ tx, balance: updated.balance });
+      }
+      return bad(400, "bad_kind");
     }
 
     if (action === "teller.transfer") {
       const { fromAccountNo, toAccountNo, amount, memo } = payload;
       const amt = Number(amount);
-      const from = findAccountByNo(fromAccountNo);
-      const to = findAccountByNo(toAccountNo);
-      if (!from || !to || !Number.isFinite(amt) || amt <= 0) return jsonRes(400, { ok:false, error:"bad_request" });
+      if (!fromAccountNo || !toAccountNo || !Number.isFinite(amt) || amt <= 0) return bad(400, "bad_request");
 
-      if (from.flags?.paymentStop) return jsonRes(409, { ok:false, error:"payment_stopped" });
-      if (from.status !== "정상") return jsonRes(409, { ok:false, error:"account_blocked" });
-      if (from.balance < amt) return jsonRes(409, { ok:false, error:"insufficient" });
+      const fromAcc = await getAccountByNo(admin, String(fromAccountNo));
+      const toAcc = await getAccountByNo(admin, String(toAccountNo));
+      if (!fromAcc || !toAcc) return bad(404, "account_not_found");
 
-      from.balance -= amt;
-      to.balance += amt;
-      from.updatedAt = nowISO(); to.updatedAt = nowISO();
-      const tx = addTx({ kind:"이체", amount: amt, fromAccId: from.id, toAccId: to.id, memo });
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, tx });
+      const flags = fromAcc.flags || {};
+      if (fromAcc.status !== "정상") return bad(409, "account_blocked");
+      if (flags.paymentStop) return bad(409, "payment_stopped");
+      if (Number(fromAcc.balance) < amt) return bad(409, "insufficient");
+
+      await updateAccount(admin, fromAcc.id, { balance: Number(fromAcc.balance) - amt });
+      await updateAccount(admin, toAcc.id, { balance: Number(toAcc.balance) + amt });
+
+      const txOut = await insertTx(admin, fromAcc.id, "이체출금", amt, memo || `to ${toAcc.account_no}`);
+      const txIn = await insertTx(admin, toAcc.id, "이체입금", amt, memo || `from ${fromAcc.account_no}`);
+      return ok({ txOut, txIn });
     }
 
-    // ---------- JeSingo (제신고/사고/변경 + 압류/가압류/지급정지) ----------
-    if (action === "jeSingo.create") {
-      const { customerId, accountNo, type, detail, memo, holdAmount } = payload;
-      if (!type) return jsonRes(400, { ok:false, error:"type_required" });
-      const acc = accountNo ? findAccountByNo(accountNo) : null;
-      const js = {
-        id: genId("JS"),
-        customerId: customerId || (acc ? acc.customerId : null),
-        accountNo: accountNo || null,
-        type, // 주소변경/연락처변경/분실/압류/가압류/지급정지/해제 등
-        detail: detail || "",
-        memo: memo || "",
-        holdAmount: holdAmount ? Number(holdAmount) : null,
-        status: "접수",
-        createdAt: nowISO(),
-        processedAt: null
+    if (action === "teller.getCustomerDetail") {
+      const { customerId } = payload;
+      if (!customerId) return bad(400, "customer_required");
+      const { data: cust, error: ec } = await admin.from("customers").select("*").eq("id", customerId).single();
+      if (ec) throw ec;
+      const { data: accts, error: ea } = await admin.from("accounts").select("*").eq("customer_id", customerId).order("created_at", { ascending: true });
+      if (ea) throw ea;
+      const { data: js, error: ej } = await admin.from("jesingo").select("*").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(200);
+      if (ej) throw ej;
+      return ok({ customer: cust, accounts: accts || [], jesingo: js || [] });
+    }
+
+    // ----- JeSingo -----
+    if (action === "jesingo.create") {
+      const { customerId, accountNo, category, item, field, oldValue, newValue, detail, accountPinOld, accountPinNew } = payload;
+      if (!customerId || !category) return bad(400, "customer_category_required");
+
+      let accountId = null;
+      let acc = null;
+      if (accountNo) {
+        acc = await getAccountByNo(admin, String(accountNo));
+        if (!acc) return bad(404, "account_not_found");
+        accountId = acc.id;
+      }
+
+      if (category === "비밀번호변경") {
+        if (!acc) return bad(400, "account_required");
+        const newPin = String(accountPinNew || "").trim();
+        if (newPin.length < 4) return bad(400, "new_pin_required_4+");
+
+        const oldPin = String(accountPinOld || "").trim();
+        if (oldPin) {
+          if (!pbkdf2Verify(oldPin, acc.account_pin_hash)) return bad(409, "old_pin_mismatch");
+        }
+        await updateAccount(admin, acc.id, { account_pin_hash: pbkdf2Hash(newPin) });
+      }
+
+      if (category === "정보변경") {
+        if (!field || !newValue) return bad(400, "field_newvalue_required");
+        const allowed = new Set(["주소", "연락처", "이메일", "이름"]);
+        if (!allowed.has(field)) return bad(400, "unsupported_field");
+
+        const patch = { updated_at: nowISO() };
+        if (field === "주소") patch.address = String(newValue);
+        if (field === "연락처") patch.phone = String(newValue);
+        if (field === "이메일") patch.email = String(newValue);
+        if (field === "이름") patch.name = String(newValue);
+
+        const { error: eu } = await admin.from("customers").update(patch).eq("id", customerId);
+        if (eu) throw eu;
+      }
+
+      const { data, error } = await admin.from("jesingo").insert({
+        customer_id: customerId,
+        account_id: accountId,
+        category,
+        item: item || null,
+        field: field || null,
+        old_value: oldValue || null,
+        new_value: newValue || null,
+        detail: detail || null,
+        status: "접수"
+      }).select("*").single();
+
+      if (error) throw error;
+      return ok({ jesingo: data });
+    }
+
+    if (action === "jesingo.process") {
+      const { id, status } = payload;
+      if (!id) return bad(400, "id_required");
+      const { data, error } = await admin.from("jesingo")
+        .update({ status: status || "처리완료", processed_at: nowISO() })
+        .eq("id", id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return ok({ jesingo: data });
+    }
+
+    // ----- Restrictions -----
+    if (action === "restrict.set") {
+      const { accountNo, paymentStop, seizure, provisionalSeizure, holdAmount, limitAccount } = payload;
+      if (!accountNo) return bad(400, "account_required");
+      const acc = await getAccountByNo(admin, String(accountNo));
+      if (!acc) return bad(404, "account_not_found");
+
+      const flags = acc.flags || {};
+      const newFlags = {
+        ...flags,
+        paymentStop: typeof paymentStop === "boolean" ? paymentStop : flags.paymentStop,
+        seizure: typeof seizure === "boolean" ? seizure : flags.seizure,
+        provisionalSeizure: typeof provisionalSeizure === "boolean" ? provisionalSeizure : flags.provisionalSeizure,
+        limitAccount: typeof limitAccount === "boolean" ? limitAccount : flags.limitAccount
       };
-      db.jeSingo.unshift(js);
 
-      // Apply immediate effects for special types
-      if (acc) {
-        if (type === "지급정지") {
-          acc.flags.paymentStop = true;
-        }
-        if (type === "압류") {
-          acc.flags.seizure = true;
-          if (js.holdAmount && js.holdAmount > 0) acc.holds.push({ kind:"압류", amount: js.holdAmount, at: nowISO(), ref: js.id });
-        }
-        if (type === "가압류") {
-          acc.flags.provisionalSeizure = true;
-          if (js.holdAmount && js.holdAmount > 0) acc.holds.push({ kind:"가압류", amount: js.holdAmount, at: nowISO(), ref: js.id });
-        }
-        acc.updatedAt = nowISO();
+      let holds = Array.isArray(acc.holds) ? acc.holds : (acc.holds || []);
+      const amt = Number(holdAmount || 0);
+      if (amt > 0) {
+        if (seizure) holds = [{ kind: "압류", amount: amt, at: nowISO() }, ...holds];
+        if (provisionalSeizure) holds = [{ kind: "가압류", amount: amt, at: nowISO() }, ...holds];
       }
 
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, jeSingo: js, account: acc ? { accountNo: acc.accountNo, flags: acc.flags, holds: acc.holds } : null });
+      const updated = await updateAccount(admin, acc.id, { flags: newFlags, holds });
+      return ok({ account: updated });
     }
 
-    if (action === "jeSingo.process") {
-      const { id, status, memo } = payload;
-      const js = db.jeSingo.find(x => x.id === id);
-      if (!js) return jsonRes(404, { ok:false, error:"not_found" });
-      js.status = status || "처리";
-      js.memo = memo || js.memo;
-      js.processedAt = nowISO();
-
-      const acc = js.accountNo ? findAccountByNo(js.accountNo) : null;
-      if (acc && (js.type === "지급정지해제" || js.type === "압류해제" || js.type === "가압류해제")) {
-        if (js.type === "지급정지해제") acc.flags.paymentStop = false;
-        if (js.type === "압류해제") { acc.flags.seizure = false; acc.holds = acc.holds.filter(h => h.kind !== "압류"); }
-        if (js.type === "가압류해제") { acc.flags.provisionalSeizure = false; acc.holds = acc.holds.filter(h => h.kind !== "가압류"); }
-        acc.updatedAt = nowISO();
-      }
-
-      await writeDB(store, db);
-      return jsonRes(200, { ok:true, jeSingo: js });
+    if (action === "restrict.releaseLimit") {
+      const { accountNo } = payload;
+      if (!accountNo) return bad(400, "account_required");
+      const acc = await getAccountByNo(admin, String(accountNo));
+      if (!acc) return bad(404, "account_not_found");
+      const flags = acc.flags || {};
+      const updated = await updateAccount(admin, acc.id, { flags: { ...flags, limitAccount: false } });
+      return ok({ account: updated });
     }
 
-    // -------- Internet banking enrollment (B) --------
-    if (action === "admin.enrollIdentity") {
-      const { name, email, tempPassword } = payload;
-      if (!name || !email || !tempPassword) return jsonRes(400, { ok:false, error:"name_email_password_required" });
+    // ----- Internet banking enrollment -----
+    if (action === "admin.enrollInternetBanking") {
+      const { name, email, tempPassword, phone } = payload;
+      if (!name || !email || !tempPassword) return bad(400, "name_email_password_required");
 
-      const adminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
-      if (!adminToken) {
-        // Don't crash; return guidance.
-        return jsonRes(409, { ok:false, error:"missing_identity_admin_token", hint:"Netlify Site settings > Environment variables 에 IDENTITY_ADMIN_TOKEN 추가 필요" });
+      let userId = null;
+      try {
+        const { data, error } = await admin.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { name }
+        });
+        if (error) throw error;
+        userId = data.user.id;
+      } catch (e) {
+        userId = await findAuthUserIdByEmail(admin, email);
+        if (!userId) return bad(409, "auth_user_create_failed", { detail: String(e?.message || e) });
       }
 
-      const siteUrl = process.env.URL || "https://example.netlify.app";
-      const res = await createIdentityUser({ siteUrl, adminToken, email, password: tempPassword, fullName: name });
+      const cust = await ensureCustomerForEmail(admin, email, name, phone || "");
+      await ensureProfile(admin, userId, cust.id);
 
-      if (res.status < 200 || res.status >= 300) {
-        return jsonRes(500, { ok:false, error:"identity_create_failed", status: res.status, body: res.body.slice(0, 500) });
+      const { data: accts, error: ea } = await admin.from("accounts").select("*").eq("customer_id", cust.id).order("created_at", { ascending: true });
+      if (ea) throw ea;
+      if (!accts || accts.length === 0) {
+        await admin.from("accounts").insert({
+          customer_id: cust.id,
+          account_no: randAccountNo(),
+          type: "입출금",
+          status: "정상",
+          balance: 0,
+          flags: { limitAccount: true, paymentStop: false, seizure: false, provisionalSeizure: false },
+          holds: [],
+          account_pin_hash: pbkdf2Hash("0000")
+        });
       }
 
-      // Create/attach customer + account in DB
-      const cid = ensureCustomerForEmail(email);
-      db.customers[cid].name = name;
-      db.customers[cid].updatedAt = nowISO();
-      await writeDB(store, db);
-
-      return jsonRes(200, { ok:true, customerId: cid, identity: safeParseJson(res.body, { raw: res.body }) });
+      return ok({ customer_no: cust.customer_no, customer_id: cust.id });
     }
 
-    // fallback
-    return jsonRes(400, { ok:false, error:"unknown_action", action });
+    return bad(400, "unknown_action", { action });
   } catch (err) {
-    // Prevent 502 by always returning a JSON error.
-    return jsonRes(500, { ok:false, error:"server_error", message: String(err && err.message ? err.message : err), at: new Date().toISOString() });
+    return bad(500, "server_error", { message: String(err?.message || err) });
   }
 };

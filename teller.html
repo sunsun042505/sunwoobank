@@ -3,40 +3,45 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>TellerDesk · 선우뱅크</title>
+<title>TellerDesk · 선우뱅크 (Supabase)</title>
 <style>
-:root{--bg:#0b1220;--card:#0f172a;--card2:#111c33;--text:#e5e7eb;--muted:#94a3b8;--line:rgba(148,163,184,.18);--accent:#22c55e;--danger:#ef4444;--btn:#1f2937}
+:root{--bg:#070b14;--card:rgba(255,255,255,.04);--line:rgba(148,163,184,.18);--text:#e5e7eb;--muted:#94a3b8;--btn:#1f2937}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:linear-gradient(180deg,#060a14,#0b1220 30%,#0b1220);color:var(--text)}
-header{position:sticky;top:0;background:rgba(6,10,20,.75);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
-.wrap{max-width:1280px;margin:0 auto;padding:16px}
-.row{display:flex;gap:12px;align-items:center;justify-content:space-between}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:linear-gradient(180deg,#050814,#0a1020 30%,#070b14);color:var(--text)}
+header{position:sticky;top:0;background:rgba(5,8,20,.75);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+.wrap{max-width:1380px;margin:0 auto;padding:16px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;gap:10px;align-items:center}
-.logo{width:36px;height:36px;border-radius:14px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+.logo{width:38px;height:38px;border-radius:15px;background:linear-gradient(135deg,#60a5fa,#34d399)}
 h1{font-size:18px;margin:0}
 .small{font-size:12px;color:var(--muted)}
-.btn{border:0;background:var(--btn);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
-.btn.ok{background:rgba(34,197,94,.18);border:1px solid rgba(34,197,94,.35)}
-.btn.danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
 .badge{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
 .badge.online{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.12)}
 .badge.offline{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.12)}
-.grid{display:grid;grid-template-columns:320px 1fr;gap:14px;margin-top:14px}
-.card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:18px;padding:14px}
+.btn{border:0;background:var(--btn);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+.btn.ok{background:rgba(34,197,94,.18);border:1px solid rgba(34,197,94,.35)}
+.btn.danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
+.grid{display:grid;grid-template-columns:340px 1fr;gap:14px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
 .card h2{font-size:14px;margin:0 0 10px 0}
 .hr{height:1px;background:var(--line);margin:10px 0}
-.input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(15,23,42,.85);color:var(--text)}
-textarea{min-height:80px;resize:vertical}
-.nav button{width:100%;text-align:left;margin-bottom:8px}
+.input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(15,23,42,.7);color:var(--text)}
+textarea{min-height:90px;resize:vertical}
 .note{font-size:12px;color:var(--muted)}
+.hidden{display:none}
+.nav button{width:100%;text-align:left;margin-bottom:8px}
+.topSearch{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.topSearch .input{width:220px}
+.results{border:1px solid var(--line);border-radius:14px;background:rgba(15,23,42,.85);overflow:hidden}
+.results button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:transparent;color:var(--text);cursor:pointer;border-bottom:1px solid var(--line)}
+.results button:hover{background:rgba(255,255,255,.06)}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.k{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;padding:12px}
+.k .v{font-size:18px;font-weight:900}
 table{width:100%;border-collapse:collapse}
 th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.k{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;padding:12px}
-.k .v{font-size:18px;font-weight:800}
-.hidden{display:none}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:1050px){.grid{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}.split{grid-template-columns:1fr}.topSearch .input{width:100%}}
 </style>
 </head>
 <body>
@@ -47,7 +52,7 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
         <div class="logo"></div>
         <div>
           <h1>TellerDesk</h1>
-          <div class="small">창구(텔러) 데모 · 코드 0612 필요 · (실제 금융 서비스 아님)</div>
+          <div class="small">텔러는 코드(0612) 자체 로그인 · 고객은 Supabase 로그인</div>
         </div>
       </div>
       <div class="row" style="gap:10px">
@@ -63,44 +68,68 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
   <div class="grid">
     <div class="card">
       <h2>텔러 로그인</h2>
-      <div class="note">Netlify 로그인창 안 뜸. 코드(0612)로만 내부 권한 사용.</div>
+      <div class="note">로그인해야 메뉴/검색/업무 접근 가능</div>
       <div class="hr"></div>
       <label class="note">코드</label>
-      <input id="code" class="input" placeholder="0612" />
+      <input id="code" class="input" placeholder="0612"/>
       <div style="height:10px"></div>
       <button id="login" class="btn ok" style="width:100%">로그인</button>
       <div id="loginMsg" class="note" style="margin-top:10px"></div>
 
-      <div class="hr"></div>
-      <div class="nav">
-        <button class="btn" data-tab="dash">대시보드</button>
-        <button class="btn" data-tab="cust">고객/계좌</button>
-        <button class="btn" data-tab="cash">입금/출금/이체</button>
-        <button class="btn" data-tab="jes">제신고(사고/변경)</button>
-        <button class="btn" data-tab="enroll">인터넷뱅킹 가입</button>
+      <div id="navArea" class="hidden">
+        <div class="hr"></div>
+        <div class="nav">
+          <button class="btn" data-tab="dash">대시보드</button>
+          <button class="btn" data-tab="cust">고객등록/계좌</button>
+          <button class="btn" data-tab="cash">입출금/이체</button>
+          <button class="btn" data-tab="jes">제신고(변경/분실/비번)</button>
+          <button class="btn" data-tab="restrict">거래제한/법적조치</button>
+          <button class="btn" data-tab="enroll">인터넷뱅킹 가입</button>
+        </div>
+        <div class="hr"></div>
+        <button id="refresh" class="btn" style="width:100%">선택 고객 새로고침</button>
+        <div class="note" style="margin-top:10px">⚠️ "식별번호(13자리)"는 데모용 가짜 숫자만. 실제 주민등록번호 입력 금지.</div>
       </div>
-
-      <div class="hr"></div>
-      <div class="note">데이터</div>
-      <button id="reload" class="btn" style="width:100%;margin-top:8px">온라인 불러오기</button>
     </div>
 
     <div class="card">
-      <div id="tab-dash">
-        <h2>대시보드</h2>
-        <div class="note">공용 DB 기준 요약</div>
-        <div class="hr"></div>
-        <div class="kpi">
-          <div class="k"><div class="note">고객</div><div id="kCust" class="v">0</div></div>
-          <div class="k"><div class="note">계좌</div><div id="kAcc" class="v">0</div></div>
-          <div class="k"><div class="note">제신고</div><div id="kJs" class="v">0</div></div>
+      <div id="topArea" class="hidden">
+        <div class="row" style="align-items:flex-end">
+          <div style="flex:1">
+            <div class="note">고객 검색(이름/전화/이메일) → 선택 후 업무 처리</div>
+            <div class="topSearch" style="margin-top:8px">
+              <input id="sName" class="input" placeholder="이름"/>
+              <input id="sPhone" class="input" placeholder="전화번호"/>
+              <input id="sEmail" class="input" placeholder="이메일"/>
+              <button id="sBtn" class="btn">검색</button>
+            </div>
+            <div id="resBox" class="results hidden" style="margin-top:10px"></div>
+          </div>
+          <div style="min-width:320px">
+            <div class="note">선택 고객</div>
+            <div class="badge" id="selInfo" style="margin-top:8px;width:100%;display:block">없음</div>
+          </div>
         </div>
         <div class="hr"></div>
-        <h2>최근 거래</h2>
-        <div style="overflow:auto">
+      </div>
+
+      <div id="tab-dash">
+        <h2>대시보드</h2>
+        <div class="note">선택 고객이 있으면 고객 기준 요약</div>
+        <div class="hr"></div>
+        <div class="kpi">
+          <div class="k"><div class="note">선택 고객</div><div id="kCust" class="v">-</div></div>
+          <div class="k"><div class="note">계좌</div><div id="kAcc" class="v">-</div></div>
+          <div class="k"><div class="note">제신고</div><div id="kJs" class="v">-</div></div>
+          <div class="k"><div class="note">잔액합</div><div id="kBal" class="v">-</div></div>
+        </div>
+        <div class="hr"></div>
+        <h2>선택 고객 계좌</h2>
+        <div class="note" id="dashHint">고객을 선택해줘.</div>
+        <div style="overflow:auto;max-height:420px;margin-top:10px">
           <table>
-            <thead><tr><th>시간</th><th>유형</th><th>금액</th><th>메모</th></tr></thead>
-            <tbody id="txRows"></tbody>
+            <thead><tr><th>계좌</th><th>유형</th><th>상태</th><th>제한</th><th>잔액</th></tr></thead>
+            <tbody id="accRows"></tbody>
           </table>
         </div>
       </div>
@@ -109,68 +138,72 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
         <h2>고객 등록</h2>
         <div class="split">
           <div>
-            <label class="note">고객명</label>
+            <label class="note">이름</label>
             <input id="cName" class="input" placeholder="예: 이선우"/>
           </div>
           <div>
-            <label class="note">연락처</label>
-            <input id="cPhone" class="input" placeholder="예: 010-0000-0000"/>
+            <label class="note">식별번호(13자리, 데모용 가짜 숫자)</label>
+            <input id="cRRN" class="input" placeholder="예: 0000000000000"/>
           </div>
         </div>
         <div style="height:10px"></div>
-        <label class="note">이메일(선택: 고객로그인 매핑)</label>
-        <input id="cEmail" class="input" placeholder="예: sunwoo@example.com"/>
-        <div style="height:10px"></div>
-        <button id="createCust" class="btn ok">고객 생성</button>
-        <div id="custMsg" class="note" style="margin-top:10px"></div>
-
-        <div class="hr"></div>
-        <h2>계좌 개설</h2>
         <div class="split">
           <div>
-            <label class="note">고객 선택</label>
-            <select id="custSel"></select>
+            <label class="note">전화번호</label>
+            <input id="cPhone" class="input" placeholder="010-0000-0000"/>
           </div>
           <div>
-            <label class="note">상품(유형)</label>
-            <select id="accType">
+            <label class="note">이메일(선택)</label>
+            <input id="cEmail" class="input" placeholder="you@example.com"/>
+          </div>
+        </div>
+        <div style="height:10px"></div>
+        <label class="note">주소</label>
+        <input id="cAddr" class="input" placeholder="예: 부산 ..."/>
+        <div style="height:10px"></div>
+        <button id="cCreate" class="btn ok">고객 생성</button>
+        <div id="cMsg" class="note" style="margin-top:10px"></div>
+
+        <div class="hr"></div>
+        <h2>계좌 개설(선택 고객)</h2>
+        <div class="note">고객을 먼저 검색해서 선택해줘.</div>
+        <div style="height:10px"></div>
+        <div class="split">
+          <div>
+            <label class="note">상품</label>
+            <select id="aType">
               <option>입출금</option>
               <option>정기예금</option>
               <option>정기적금</option>
             </select>
           </div>
+          <div>
+            <label class="note">초기잔액</label>
+            <input id="aBal" class="input" type="number" placeholder="50000"/>
+          </div>
         </div>
         <div style="height:10px"></div>
         <div class="split">
           <div>
-            <label class="note">초기잔액</label>
-            <input id="initBal" class="input" type="number" placeholder="예: 50000"/>
+            <label class="note">계좌번호(선택)</label>
+            <input id="aNo" class="input" placeholder="비우면 자동"/>
           </div>
           <div>
-            <label class="note">계좌번호(선택)</label>
-            <input id="accNo" class="input" placeholder="비우면 자동"/>
+            <label class="note">계좌 비밀번호(핀 4자리 이상)</label>
+            <input id="aPin" class="input" placeholder="예: 1234"/>
           </div>
         </div>
         <div style="height:10px"></div>
-        <button id="createAcc" class="btn ok">계좌 개설</button>
-        <div id="accMsg" class="note" style="margin-top:10px"></div>
-
-        <div class="hr"></div>
-        <h2>목록</h2>
-        <div style="overflow:auto;max-height:420px">
-          <table>
-            <thead><tr><th>고객</th><th>이메일</th><th>계좌</th><th>잔액</th><th>상태/제한</th></tr></thead>
-            <tbody id="custTable"></tbody>
-          </table>
-        </div>
+        <button id="aCreate" class="btn ok">계좌 개설</button>
+        <div id="aMsg" class="note" style="margin-top:10px"></div>
       </div>
 
       <div id="tab-cash" class="hidden">
         <h2>입금/출금</h2>
         <div class="split">
           <div>
-            <label class="note">계좌번호</label>
-            <input id="ioAccNo" class="input" placeholder="110-1234-5678"/>
+            <label class="note">계좌 선택</label>
+            <select id="ioAcc"></select>
           </div>
           <div>
             <label class="note">구분</label>
@@ -184,38 +217,38 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
         <div class="split">
           <div>
             <label class="note">금액</label>
-            <input id="ioAmt" class="input" type="number" placeholder="예: 10000"/>
+            <input id="ioAmt" class="input" type="number" placeholder="10000"/>
           </div>
           <div>
-            <label class="note">메모(선택)</label>
-            <input id="ioMemo" class="input" placeholder="예: 현금 입금"/>
+            <label class="note">메모</label>
+            <input id="ioMemo" class="input" placeholder="현금 입금"/>
           </div>
         </div>
         <div style="height:10px"></div>
-        <button id="cashBtn" class="btn ok">처리</button>
-        <div id="cashMsg" class="note" style="margin-top:10px"></div>
+        <button id="ioBtn" class="btn ok">처리</button>
+        <div id="ioMsg" class="note" style="margin-top:10px"></div>
 
         <div class="hr"></div>
         <h2>이체</h2>
         <div class="split">
           <div>
             <label class="note">출금계좌</label>
-            <input id="trFrom" class="input" placeholder="110-0000-0000"/>
+            <select id="trFrom"></select>
           </div>
           <div>
-            <label class="note">받는계좌</label>
-            <input id="trTo" class="input" placeholder="110-0000-0000"/>
+            <label class="note">받는계좌번호</label>
+            <input id="trTo" class="input" placeholder="110-1234-5678"/>
           </div>
         </div>
         <div style="height:10px"></div>
         <div class="split">
           <div>
             <label class="note">금액</label>
-            <input id="trAmt" class="input" type="number" placeholder="예: 5000"/>
+            <input id="trAmt" class="input" type="number" placeholder="5000"/>
           </div>
           <div>
-            <label class="note">메모(선택)</label>
-            <input id="trMemo" class="input" placeholder="예: 내부 이체"/>
+            <label class="note">메모</label>
+            <input id="trMemo" class="input" placeholder="업무 이체"/>
           </div>
         </div>
         <div style="height:10px"></div>
@@ -224,86 +257,176 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
       </div>
 
       <div id="tab-jes" class="hidden">
-        <h2>제신고(사고/변경) 접수</h2>
-        <div class="note">목록 자동 생성 + 압류/가압류/지급정지 포함</div>
+        <h2>제신고(변경/분실/비밀번호)</h2>
+        <div class="note">지급정지/압류/가압류는 '거래제한/법적조치' 메뉴에서 처리</div>
         <div class="hr"></div>
-        <div class="split">
-          <div>
-            <label class="note">고객(선택)</label>
-            <select id="jsCust"></select>
-          </div>
-          <div>
-            <label class="note">계좌번호(선택)</label>
-            <input id="jsAcc" class="input" placeholder="110-1234-5678"/>
-          </div>
-        </div>
-        <div style="height:10px"></div>
-        <label class="note">유형</label>
-        <select id="jsType">
-          <option>주소변경</option>
-          <option>연락처변경</option>
-          <option>이름변경</option>
+
+        <label class="note">분류</label>
+        <select id="jsCat">
+          <option>비밀번호변경</option>
+          <option>정보변경</option>
           <option>분실신고</option>
-          <option>비밀번호오류</option>
-          <option>한도변경</option>
-          <option>지급정지</option>
-          <option>지급정지해제</option>
-          <option>압류</option>
-          <option>압류해제</option>
-          <option>가압류</option>
-          <option>가압류해제</option>
+          <option>기타</option>
         </select>
         <div style="height:10px"></div>
-        <div class="split">
-          <div>
-            <label class="note">상세</label>
-            <input id="jsDetail" class="input" placeholder="예: 주소지 변경 접수"/>
+
+        <div id="jsPwBox" class="hidden">
+          <div class="split">
+            <div>
+              <label class="note">계좌 선택</label>
+              <select id="jsAcc"></select>
+            </div>
+            <div>
+              <label class="note">현재 계좌비밀번호(알면 입력)</label>
+              <input id="jsOldPin" class="input" placeholder="예: 1234"/>
+            </div>
           </div>
-          <div>
-            <label class="note">보류/압류 금액(압류/가압류 선택 시)</label>
-            <input id="jsHold" class="input" type="number" placeholder="예: 50000"/>
+          <div style="height:10px"></div>
+          <div class="split">
+            <div>
+              <label class="note">새 계좌비밀번호</label>
+              <input id="jsNewPin" class="input" placeholder="예: 5678"/>
+            </div>
+            <div>
+              <label class="note">확인</label>
+              <input id="jsNewPin2" class="input" placeholder="다시 입력"/>
+            </div>
           </div>
         </div>
+
+        <div id="jsInfoBox" class="hidden">
+          <div class="split">
+            <div>
+              <label class="note">변경 항목</label>
+              <select id="jsField">
+                <option>주소</option>
+                <option>연락처</option>
+                <option>이메일</option>
+                <option>이름</option>
+              </select>
+            </div>
+            <div>
+              <label class="note">새 값</label>
+              <input id="jsNewVal" class="input" placeholder="변경할 값"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="jsLostBox" class="hidden">
+          <label class="note">분실 항목</label>
+          <select id="jsItem">
+            <option>카드</option>
+            <option>통장</option>
+            <option>OTP</option>
+            <option>도장</option>
+            <option>휴대폰</option>
+            <option>기타</option>
+          </select>
+        </div>
+
         <div style="height:10px"></div>
-        <label class="note">메모</label>
-        <textarea id="jsMemo" placeholder="사유/증빙/처리 메모"></textarea>
+        <label class="note">상세/메모</label>
+        <textarea id="jsDetail" placeholder="증빙/사유/처리 메모"></textarea>
         <div style="height:10px"></div>
-        <button id="jsCreate" class="btn ok">접수 등록</button>
+        <button id="jsBtn" class="btn ok">접수 등록</button>
         <div id="jsMsg" class="note" style="margin-top:10px"></div>
 
         <div class="hr"></div>
-        <h2>제신고 목록</h2>
+        <h2>제신고 목록(선택 고객)</h2>
         <div style="overflow:auto;max-height:420px">
           <table>
-            <thead><tr><th>접수시간</th><th>유형</th><th>고객</th><th>계좌</th><th>상태</th><th>처리</th></tr></thead>
+            <thead><tr><th>시간</th><th>분류</th><th>내용</th><th>상태</th><th>처리</th></tr></thead>
             <tbody id="jsRows"></tbody>
           </table>
         </div>
       </div>
 
-      <div id="tab-enroll" class="hidden">
-        <h2>인터넷뱅킹 가입</h2>
-        <div class="note">Invite-only 상태에서 B 방식(즉시 생성): admin/users로 계정 생성</div>
+      <div id="tab-restrict" class="hidden">
+        <h2>거래제한 / 법적조치</h2>
+        <div class="note">지급정지 · 압류 · 가압류 · 한도계좌 해제</div>
         <div class="hr"></div>
+
+        <label class="note">계좌 선택</label>
+        <select id="rAcc"></select>
+        <div style="height:10px"></div>
+
+        <div class="split">
+          <div>
+            <label class="note">지급정지</label>
+            <select id="rPay">
+              <option value="on">ON</option>
+              <option value="off">OFF</option>
+            </select>
+          </div>
+          <div>
+            <label class="note">한도계좌</label>
+            <select id="rLimit">
+              <option value="on">ON</option>
+              <option value="off">OFF(해제)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="split">
+          <div>
+            <label class="note">압류</label>
+            <select id="rSeiz">
+              <option value="on">ON</option>
+              <option value="off">OFF</option>
+            </select>
+          </div>
+          <div>
+            <label class="note">가압류</label>
+            <select id="rProv">
+              <option value="on">ON</option>
+              <option value="off">OFF</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <label class="note">압류/가압류 보류금액(선택)</label>
+        <input id="rHold" class="input" type="number" placeholder="예: 50000"/>
+        <div style="height:10px"></div>
+        <button id="rApply" class="btn ok">적용</button>
+        <button id="rReleaseLimit" class="btn" style="margin-left:8px">한도계좌 해제(버튼)</button>
+        <div id="rMsg" class="note" style="margin-top:10px"></div>
+
+        <div class="hr"></div>
+        <h2>상태 미리보기(선택 계좌)</h2>
+        <div id="rPreview" class="badge" style="display:block;width:100%">-</div>
+      </div>
+
+      <div id="tab-enroll" class="hidden">
+        <h2>인터넷뱅킹 가입(계정 생성, invite-only)</h2>
+        <div class="note">Supabase Auth 계정 생성 + email_confirm 자동 true</div>
+        <div class="hr"></div>
+
         <div class="split">
           <div>
             <label class="note">이름</label>
-            <input id="eName" class="input" placeholder="예: 이선우"/>
+            <input id="eName" class="input" placeholder="이선우"/>
           </div>
           <div>
             <label class="note">이메일</label>
-            <input id="eEmail" class="input" placeholder="예: sunwoo@example.com"/>
+            <input id="eEmail" class="input" placeholder="you@example.com"/>
           </div>
         </div>
         <div style="height:10px"></div>
-        <label class="note">임시 비밀번호</label>
-        <input id="ePw" class="input" placeholder="예: temp1234"/>
+        <div class="split">
+          <div>
+            <label class="note">임시 비밀번호</label>
+            <input id="ePw" class="input" placeholder="temp1234"/>
+          </div>
+          <div>
+            <label class="note">전화(선택)</label>
+            <input id="ePhone" class="input" placeholder="010-0000-0000"/>
+          </div>
+        </div>
         <div style="height:10px"></div>
-        <button id="enrollBtn" class="btn ok">계정 생성 + 고객 매핑</button>
-        <div id="enrollMsg" class="note" style="margin-top:10px"></div>
-
-        <div class="hr"></div>
-        <div class="note">⚠️ 필요 환경변수: <b>IDENTITY_ADMIN_TOKEN</b> (Netlify Site settings → Environment variables)</div>
+        <button id="eBtn" class="btn ok">계정 생성 + 고객 매핑</button>
+        <div id="eMsg" class="note" style="margin-top:10px"></div>
       </div>
     </div>
   </div>
@@ -314,42 +437,46 @@ const conn = document.getElementById('conn');
 const sess = document.getElementById('sess');
 const loginMsg = document.getElementById('loginMsg');
 const logoutBtn = document.getElementById('logout');
-const codeInput = document.getElementById('code');
+const navArea = document.getElementById('navArea');
+const topArea = document.getElementById('topArea');
+const selInfo = document.getElementById('selInfo');
+const resBox = document.getElementById('resBox');
 
 let tellerCode = localStorage.getItem('tellerCode') || "";
 let loggedIn = localStorage.getItem('tellerLoggedIn') === "1";
-codeInput.value = tellerCode;
+document.getElementById('code').value = tellerCode;
+
+let selectedCustomer = null;
+let selectedDetail = null;
 
 function setConn(ok){
-  if(ok){
-    conn.textContent = 'ONLINE';
-    conn.classList.remove('offline'); conn.classList.add('online');
-  }else{
-    conn.textContent = 'OFFLINE';
-    conn.classList.remove('online'); conn.classList.add('offline');
-  }
+  conn.textContent = ok ? 'ONLINE' : 'OFFLINE';
+  conn.classList.toggle('online', ok);
+  conn.classList.toggle('offline', !ok);
 }
-
 async function ping(){
   try{
-    const r = await fetch('/.netlify/functions/bank?ping=1', {cache:'no-store'});
+    const r = await fetch('/.netlify/functions/bank?ping=1', { cache:'no-store' });
     const t = await r.text();
     setConn(r.ok && t.trim()==='pong');
-  }catch(e){
-    setConn(false);
-  }
+  }catch(e){ setConn(false); }
 }
 ping();
-
-function money(n){ return (Number(n)||0).toLocaleString('ko-KR') + '원'; }
 
 function setSessionUI(){
   if(loggedIn){
     sess.textContent = 'Teller';
     logoutBtn.classList.remove('hidden');
+    navArea.classList.remove('hidden');
+    topArea.classList.remove('hidden');
   }else{
     sess.textContent = '미로그인';
     logoutBtn.classList.add('hidden');
+    navArea.classList.add('hidden');
+    topArea.classList.add('hidden');
+    selectedCustomer = null;
+    selectedDetail = null;
+    selInfo.textContent = '없음';
   }
 }
 setSessionUI();
@@ -365,20 +492,16 @@ async function api(action, payload){
   requireLogin();
   const r = await fetch('/.netlify/functions/bank', {
     method:'POST',
-    headers:{
-      'content-type':'application/json',
-      'x-teller-code': tellerCode
-    },
-    body: JSON.stringify({action, payload})
+    headers:{ 'content-type':'application/json', 'x-teller-code': tellerCode },
+    body: JSON.stringify({ action, payload })
   });
-  const t = await r.text();
-  let j; try{ j = JSON.parse(t);}catch{ j = {ok:false, raw:t};}
+  const j = await r.json().catch(()=>({ok:false,error:'bad_json'}));
   if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
   return j;
 }
 
-document.getElementById('login').onclick = ()=>{
-  tellerCode = (codeInput.value||'').trim();
+document.getElementById('login').onclick = async ()=>{
+  tellerCode = (document.getElementById('code').value||'').trim();
   localStorage.setItem('tellerCode', tellerCode);
   if(tellerCode !== '0612'){
     loggedIn = false;
@@ -391,7 +514,7 @@ document.getElementById('login').onclick = ()=>{
   localStorage.setItem('tellerLoggedIn','1');
   loginMsg.textContent = '로그인 완료';
   setSessionUI();
-  loadAll();
+  await refreshSelected();
 };
 
 logoutBtn.onclick = ()=>{
@@ -400,203 +523,295 @@ logoutBtn.onclick = ()=>{
   setSessionUI();
 };
 
-document.getElementById('reload').onclick = ()=> loadAll();
+document.getElementById('refresh').onclick = ()=> refreshSelected();
 
-// Tabs
 document.querySelectorAll('.nav button').forEach(b=>{
-  b.onclick=()=>{
+  b.onclick = ()=>{
     const t = b.dataset.tab;
     document.querySelectorAll('[id^="tab-"]').forEach(x=>x.classList.add('hidden'));
     document.getElementById('tab-'+t).classList.remove('hidden');
   };
 });
 
-function fillSelect(sel, items, labelFn, valueFn){
-  sel.innerHTML='';
-  items.forEach(it=>{
-    const o = document.createElement('option');
-    o.value = valueFn(it);
-    o.textContent = labelFn(it);
-    sel.appendChild(o);
-  });
+function money(n){ return (Number(n)||0).toLocaleString('ko-KR') + '원'; }
+
+function setSelectedCustomer(c){
+  selectedCustomer = c;
+  selInfo.textContent = c ? `${c.name} · ${c.customer_no} · ${c.phone||'-'} · ${c.email||'-'} · (생년월일:${c.rrn_birth6})` : '없음';
 }
 
-function findCustomerName(customers, id){
-  const c = customers.find(x=>x.id===id);
-  return c ? c.name : id;
-}
-
-let cache = { customers:[], accounts:[], jeSingo:[], txs:[] };
-
-function renderDash(){
-  document.getElementById('kCust').textContent = cache.customers.length;
-  document.getElementById('kAcc').textContent = cache.accounts.length;
-  document.getElementById('kJs').textContent = cache.jeSingo.length;
-  const txRows = document.getElementById('txRows');
-  txRows.innerHTML='';
-  cache.txs.forEach(tx=>{
+function renderDashboard(){
+  const accRows = document.getElementById('accRows');
+  accRows.innerHTML = '';
+  if(!selectedDetail){
+    document.getElementById('dashHint').textContent = '고객을 선택해줘.';
+    document.getElementById('kCust').textContent = '-';
+    document.getElementById('kAcc').textContent = '-';
+    document.getElementById('kJs').textContent = '-';
+    document.getElementById('kBal').textContent = '-';
+    return;
+  }
+  document.getElementById('dashHint').textContent = '';
+  const accounts = selectedDetail.accounts || [];
+  let sum = 0;
+  accounts.forEach(a=>{
+    sum += Number(a.balance||0);
+    const flags = a.flags || {};
+    const lim = [];
+    if(flags.limitAccount) lim.push('한도');
+    if(flags.paymentStop) lim.push('지급정지');
+    if(flags.seizure) lim.push('압류');
+    if(flags.provisionalSeizure) lim.push('가압류');
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${new Date(tx.at).toLocaleString()}</td><td>${tx.kind}</td><td>${money(tx.amount)}</td><td>${tx.memo||''}</td>`;
-    txRows.appendChild(tr);
+    tr.innerHTML = `<td><b>${a.account_no}</b></td><td>${a.type}</td><td>${a.status}</td><td>${lim.join(' · ')||'-'}</td><td>${money(a.balance)}</td>`;
+    accRows.appendChild(tr);
   });
+  document.getElementById('kCust').textContent = '1';
+  document.getElementById('kAcc').textContent = accounts.length;
+  document.getElementById('kJs').textContent = (selectedDetail.jesingo||[]).length;
+  document.getElementById('kBal').textContent = money(sum);
 }
 
-function renderLists(){
-  const custSel = document.getElementById('custSel');
-  const jsCust = document.getElementById('jsCust');
-
-  fillSelect(custSel, cache.customers, c=>`${c.name} (${c.id})`, c=>c.id);
-  fillSelect(jsCust, cache.customers, c=>`${c.name} (${c.id})`, c=>c.id);
-
-  // Customer/account table
-  const tb = document.getElementById('custTable');
-  tb.innerHTML='';
-  const custMap = new Map(cache.customers.map(c=>[c.id,c]));
-  cache.accounts.forEach(a=>{
-    const c = custMap.get(a.customerId);
-    const flags = [];
-    if(a.flags?.paymentStop) flags.push('지급정지');
-    if(a.flags?.seizure) flags.push('압류');
-    if(a.flags?.provisionalSeizure) flags.push('가압류');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${c?c.name:''} <div class="note">${a.customerId}</div></td>
-      <td>${c?.email||''}</td>
-      <td><b>${a.accountNo}</b><div class="note">${a.type}</div></td>
-      <td>${money(a.balance)}</td>
-      <td>${a.status}${flags.length?`<div class="note">${flags.join(' · ')}</div>`:''}</td>`;
-    tb.appendChild(tr);
+function fillAccountSelects(){
+  const accts = (selectedDetail && selectedDetail.accounts) ? selectedDetail.accounts : [];
+  ['ioAcc','trFrom','jsAcc','rAcc'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    sel.innerHTML='';
+    accts.forEach(a=>{
+      const o = document.createElement('option');
+      o.value = a.account_no;
+      o.textContent = `${a.account_no} (${money(a.balance)})`;
+      sel.appendChild(o);
+    });
   });
+  updateRestrictPreview();
+}
 
-  // JeSingo list
+function renderJeSingoList(){
   const jsRows = document.getElementById('jsRows');
   jsRows.innerHTML='';
-  cache.jeSingo.forEach(js=>{
+  const list = (selectedDetail && selectedDetail.jesingo) ? selectedDetail.jesingo : [];
+  list.forEach(js=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${new Date(js.createdAt).toLocaleString()}</td>
-      <td><b>${js.type}</b><div class="note">${js.detail||''}</div></td>
-      <td>${findCustomerName(cache.customers, js.customerId||'-')}</td>
-      <td>${js.accountNo||'-'}</td>
-      <td>${js.status||'-'}</td>
-      <td>
-        <button class="btn" data-id="${js.id}" data-act="처리완료">처리완료</button>
-      </td>`;
+    const content = js.category==='비밀번호변경' ? `비밀번호 변경 (${js.detail||''})`
+      : js.category==='정보변경' ? `정보변경: ${js.field} → ${js.new_value}`
+      : js.category==='분실신고' ? `분실: ${js.item}`
+      : (js.detail||'');
+    tr.innerHTML = `<td>${new Date(js.created_at).toLocaleString()}</td><td><b>${js.category}</b></td><td>${content}</td><td>${js.status}</td>
+    <td><button class="btn" data-id="${js.id}">처리완료</button></td>`;
     jsRows.appendChild(tr);
   });
-
   jsRows.querySelectorAll('button[data-id]').forEach(btn=>{
     btn.onclick = async ()=>{
       try{
-        await api('jeSingo.process', {id: btn.dataset.id, status: '처리완료'});
-        await loadAll();
-      }catch(e){
-        alert('실패: '+e.message);
-      }
+        await api('jesingo.process', { id: btn.dataset.id, status: '처리완료' });
+        await refreshSelected();
+      }catch(e){ alert('실패: '+e.message); }
     };
   });
 }
 
-async function loadAll(){
-  if(!loggedIn) return;
-  try{
-    await ping();
-    const j = await api('teller.list', {});
-    cache = j;
-    renderDash();
-    renderLists();
-  }catch(e){
-    setConn(false);
-    alert('불러오기 실패: '+e.message);
-  }
+function updateRestrictPreview(){
+  const preview = document.getElementById('rPreview');
+  const accNo = document.getElementById('rAcc')?.value;
+  if(!selectedDetail || !accNo){ preview.textContent='-'; return; }
+  const acc = (selectedDetail.accounts||[]).find(a=>a.account_no===accNo);
+  if(!acc){ preview.textContent='-'; return; }
+  const f = acc.flags||{};
+  const list = [];
+  list.push(f.limitAccount?'한도계좌:ON':'한도계좌:OFF');
+  list.push(f.paymentStop?'지급정지:ON':'지급정지:OFF');
+  list.push(f.seizure?'압류:ON':'압류:OFF');
+  list.push(f.provisionalSeizure?'가압류:ON':'가압류:OFF');
+  preview.textContent = list.join(' · ');
+}
+document.getElementById('rAcc').onchange = updateRestrictPreview;
+
+async function refreshSelected(){
+  if(!loggedIn){ renderDashboard(); return; }
+  if(!selectedCustomer){ selectedDetail=null; renderDashboard(); fillAccountSelects(); renderJeSingoList(); return; }
+  const j = await api('teller.getCustomerDetail', { customerId: selectedCustomer.id });
+  selectedDetail = j;
+  renderDashboard();
+  fillAccountSelects();
+  renderJeSingoList();
 }
 
-// Actions
-document.getElementById('createCust').onclick = async ()=>{
+// Search
+document.getElementById('sBtn').onclick = async ()=>{
+  try{
+    const name = document.getElementById('sName').value.trim();
+    const phone = document.getElementById('sPhone').value.trim();
+    const email = document.getElementById('sEmail').value.trim();
+    const j = await api('teller.searchCustomers', { name, phone, email });
+    const arr = j.customers || [];
+    resBox.classList.toggle('hidden', arr.length===0);
+    resBox.innerHTML='';
+    arr.forEach(c=>{
+      const b = document.createElement('button');
+      b.textContent = `${c.name} · ${c.customer_no} · ${c.phone||'-'} · ${c.email||'-'} · 생년월일:${c.rrn_birth6}`;
+      b.onclick = async ()=>{
+        setSelectedCustomer(c);
+        resBox.classList.add('hidden');
+        await refreshSelected();
+      };
+      resBox.appendChild(b);
+    });
+  }catch(e){ alert('검색 실패: '+e.message); }
+};
+
+// Customer create
+document.getElementById('cCreate').onclick = async ()=>{
   try{
     const j = await api('teller.createCustomer', {
       name: document.getElementById('cName').value.trim(),
+      rrn: document.getElementById('cRRN').value.trim(),
       phone: document.getElementById('cPhone').value.trim(),
-      email: document.getElementById('cEmail').value.trim()
+      email: document.getElementById('cEmail').value.trim(),
+      address: document.getElementById('cAddr').value.trim()
     });
-    document.getElementById('custMsg').textContent = '생성 완료: ' + j.customer.id;
-    await loadAll();
+    document.getElementById('cMsg').textContent = `생성 완료: ${j.customer.customer_no}`;
   }catch(e){
-    document.getElementById('custMsg').textContent = '실패: ' + e.message;
+    document.getElementById('cMsg').textContent = '실패: ' + e.message;
   }
 };
 
-document.getElementById('createAcc').onclick = async ()=>{
+// Account create
+document.getElementById('aCreate').onclick = async ()=>{
   try{
+    if(!selectedCustomer) throw new Error('고객 선택 필요');
     const j = await api('teller.createAccount', {
-      customerId: document.getElementById('custSel').value,
-      type: document.getElementById('accType').value,
-      initialBalance: Number(document.getElementById('initBal').value||0),
-      accountNo: document.getElementById('accNo').value.trim()
+      customerId: selectedCustomer.id,
+      type: document.getElementById('aType').value,
+      initialBalance: Number(document.getElementById('aBal').value||0),
+      accountNo: document.getElementById('aNo').value.trim(),
+      accountPin: document.getElementById('aPin').value.trim()
     });
-    document.getElementById('accMsg').textContent = '개설 완료: ' + j.account.accountNo;
-    await loadAll();
+    document.getElementById('aMsg').textContent = '개설 완료: ' + j.account.account_no;
+    await refreshSelected();
   }catch(e){
-    document.getElementById('accMsg').textContent = '실패: ' + e.message;
+    document.getElementById('aMsg').textContent = '실패: ' + e.message;
   }
 };
 
-document.getElementById('cashBtn').onclick = async ()=>{
+// Cash in/out
+document.getElementById('ioBtn').onclick = async ()=>{
   try{
     const j = await api('teller.cashInOut', {
-      accountNo: document.getElementById('ioAccNo').value.trim(),
+      accountNo: document.getElementById('ioAcc').value,
       kind: document.getElementById('ioKind').value,
       amount: Number(document.getElementById('ioAmt').value),
       memo: document.getElementById('ioMemo').value.trim()
     });
-    document.getElementById('cashMsg').textContent = '완료: ' + j.tx.id + ' / 잔액 ' + money(j.balance);
-    await loadAll();
+    document.getElementById('ioMsg').textContent = '완료 / 잔액 ' + money(j.balance);
+    await refreshSelected();
   }catch(e){
-    document.getElementById('cashMsg').textContent = '실패: ' + e.message;
+    document.getElementById('ioMsg').textContent = '실패: ' + e.message;
   }
 };
 
+// Transfer
 document.getElementById('trBtn').onclick = async ()=>{
   try{
-    const j = await api('teller.transfer', {
-      fromAccountNo: document.getElementById('trFrom').value.trim(),
+    await api('teller.transfer', {
+      fromAccountNo: document.getElementById('trFrom').value,
       toAccountNo: document.getElementById('trTo').value.trim(),
       amount: Number(document.getElementById('trAmt').value),
       memo: document.getElementById('trMemo').value.trim()
     });
-    document.getElementById('trMsg').textContent = '이체 완료: ' + j.tx.id;
-    await loadAll();
+    document.getElementById('trMsg').textContent = '이체 완료';
+    await refreshSelected();
   }catch(e){
     document.getElementById('trMsg').textContent = '실패: ' + e.message;
   }
 };
 
-document.getElementById('jsCreate').onclick = async ()=>{
+// JeSingo category UI
+const jsCat = document.getElementById('jsCat');
+const jsPwBox = document.getElementById('jsPwBox');
+const jsInfoBox = document.getElementById('jsInfoBox');
+const jsLostBox = document.getElementById('jsLostBox');
+function jsRender(){
+  const v = jsCat.value;
+  jsPwBox.classList.toggle('hidden', v !== '비밀번호변경');
+  jsInfoBox.classList.toggle('hidden', v !== '정보변경');
+  jsLostBox.classList.toggle('hidden', v !== '분실신고');
+}
+jsCat.onchange = jsRender; jsRender();
+
+document.getElementById('jsBtn').onclick = async ()=>{
   try{
-    const j = await api('jeSingo.create', {
-      customerId: document.getElementById('jsCust').value,
-      accountNo: document.getElementById('jsAcc').value.trim(),
-      type: document.getElementById('jsType').value,
-      detail: document.getElementById('jsDetail').value.trim(),
-      memo: document.getElementById('jsMemo').value.trim(),
-      holdAmount: Number(document.getElementById('jsHold').value||0) || null
-    });
-    document.getElementById('jsMsg').textContent = '접수 완료: ' + j.jeSingo.id;
-    await loadAll();
+    if(!selectedCustomer) throw new Error('고객 선택 필요');
+    const category = jsCat.value;
+    const detail = document.getElementById('jsDetail').value.trim();
+    const payload = { customerId: selectedCustomer.id, category, detail };
+
+    if(category === '비밀번호변경'){
+      const accNo = document.getElementById('jsAcc').value;
+      const oldPin = document.getElementById('jsOldPin').value.trim();
+      const np1 = document.getElementById('jsNewPin').value.trim();
+      const np2 = document.getElementById('jsNewPin2').value.trim();
+      if(np1 !== np2) throw new Error('새 비밀번호 확인 불일치');
+      payload.accountNo = accNo;
+      payload.accountPinOld = oldPin;
+      payload.accountPinNew = np1;
+    }
+    if(category === '정보변경'){
+      payload.field = document.getElementById('jsField').value;
+      payload.newValue = document.getElementById('jsNewVal').value.trim();
+    }
+    if(category === '분실신고'){
+      payload.item = document.getElementById('jsItem').value;
+    }
+
+    await api('jesingo.create', payload);
+    document.getElementById('jsMsg').textContent = '접수 완료';
+    await refreshSelected();
   }catch(e){
     document.getElementById('jsMsg').textContent = '실패: ' + e.message;
   }
 };
 
-document.getElementById('enrollBtn').onclick = async ()=>{
+// Restrict apply
+document.getElementById('rApply').onclick = async ()=>{
   try{
-    const j = await api('admin.enrollIdentity', {
+    const accNo = document.getElementById('rAcc').value;
+    const paymentStop = document.getElementById('rPay').value === 'on';
+    const limitAccount = document.getElementById('rLimit').value === 'on';
+    const seizure = document.getElementById('rSeiz').value === 'on';
+    const provisionalSeizure = document.getElementById('rProv').value === 'on';
+    const holdAmount = Number(document.getElementById('rHold').value||0);
+    await api('restrict.set', { accountNo: accNo, paymentStop, limitAccount, seizure, provisionalSeizure, holdAmount });
+    document.getElementById('rMsg').textContent = '적용 완료';
+    await refreshSelected();
+  }catch(e){
+    document.getElementById('rMsg').textContent = '실패: ' + e.message;
+  }
+};
+document.getElementById('rReleaseLimit').onclick = async ()=>{
+  try{
+    const accNo = document.getElementById('rAcc').value;
+    await api('restrict.releaseLimit', { accountNo: accNo });
+    document.getElementById('rMsg').textContent = '한도계좌 해제 완료';
+    await refreshSelected();
+  }catch(e){
+    document.getElementById('rMsg').textContent = '실패: ' + e.message;
+  }
+};
+
+// Enroll internet banking
+document.getElementById('eBtn').onclick = async ()=>{
+  try{
+    const j = await api('admin.enrollInternetBanking', {
       name: document.getElementById('eName').value.trim(),
       email: document.getElementById('eEmail').value.trim(),
-      tempPassword: document.getElementById('ePw').value
+      tempPassword: document.getElementById('ePw').value,
+      phone: document.getElementById('ePhone').value.trim()
     });
-    document.getElementById('enrollMsg').textContent = '완료: 고객번호 ' + j.customerId;
-    await loadAll();
+    document.getElementById('eMsg').textContent = '완료: 고객번호 ' + j.customer_no;
   }catch(e){
-    document.getElementById('enrollMsg').textContent = '실패: ' + e.message;
+    document.getElementById('eMsg').textContent = '실패: ' + e.message;
   }
 };
 </script>
