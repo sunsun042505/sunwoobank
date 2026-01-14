@@ -1,23 +1,316 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<title>SunwooBank - 고객</title>
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-<style>
-body{font-family:sans-serif;background:#f5f7fb}
-.hidden{display:none}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SunwooBank · 고객</title>
+
+  <!-- Netlify Identity (고객 로그인용) -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#9fb0ffcc;
+      --text:#e9eeff;
+      --line:#273058;
+      --good:#2ee59d;
+      --bad:#ff6b6b;
+      --warn:#ffd166;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial;
+      background: radial-gradient(1200px 700px at 15% 10%, #1b2a7a55, transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, #7a1b6355, transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1080px;margin:0 auto;padding:22px}
+    .top{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:#0d1430cc;
+      backdrop-filter: blur(10px);
+    }
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg,#6ea8ff,#b66cff);
+      box-shadow:0 10px 25px #00000066;
+    }
+    .brand h1{font-size:16px;margin:0;letter-spacing:-.2px}
+    .brand p{margin:0;color:var(--muted);font-size:12px}
+    .actions{display:flex;align-items:center;gap:10px}
+    button{
+      border:1px solid var(--line);
+      background: #0f1836;
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:650;
+      letter-spacing:-.2px;
+    }
+    button.primary{background:linear-gradient(135deg,#5b8cff,#b362ff);border:none}
+    button.ghost{background:transparent}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px}
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, #111a36cc, #0c1229cc);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 20px 60px #00000055;
+      backdrop-filter: blur(8px);
+    }
+    .card h2{margin:0 0 10px 0;font-size:14px}
+    .sub{color:var(--muted);font-size:12px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{
+      border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:12px;color:var(--muted);
+      background:#0e1736;
+    }
+    .table{width:100%;border-collapse:collapse;margin-top:10px}
+    .table th,.table td{padding:10px;border-bottom:1px solid #202a52;text-align:left;font-size:13px}
+    .table th{color:#cfd8ff}
+    .money{font-variant-numeric: tabular-nums}
+    .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    input,select{
+      width:100%;
+      border:1px solid var(--line);
+      background:#0b1330;
+      color:var(--text);
+      padding:10px 12px;border-radius:14px;
+      outline:none;
+    }
+    label{display:block;margin:10px 0 6px;color:#cfd8ff;font-size:12px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .toast{
+      position:fixed;left:50%;transform:translateX(-50%);
+      bottom:20px;
+      background:#0d1430;
+      border:1px solid var(--line);
+      padding:10px 12px;border-radius:14px;
+      max-width:680px;width:calc(100% - 24px);
+      display:none;
+    }
+    .toast.show{display:block}
+    .footer{margin-top:16px;color:var(--muted);font-size:12px;opacity:.9}
+    /* Invite-only + 가입 메뉴 숨김 (위젯 내부 일부 숨김) */
+    .netlify-identity-widget .btn.signup, 
+    .netlify-identity-widget .signup,
+    .netlify-identity-widget a[href="#signup"]{display:none!important;}
+  </style>
 </head>
 <body>
-<h1>선우뱅크 고객</h1>
-<button id="loginBtn">로그인</button>
-<div id="app" class="hidden">고객 대시보드 (데모)</div>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>선우뱅크 · 고객</h1>
+        <p>계좌조회 · 이체 · 예적금 · 상품 · 내정보</p>
+      </div>
+    </div>
+    <div class="actions">
+      <span id="who" class="pill">로그인 필요</span>
+      <button id="loginBtn" class="primary">로그인</button>
+      <button id="logoutBtn" class="ghost" disabled>로그아웃</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>내 계좌</h2>
+      <div class="sub" id="acctHint">로그인 후 내 계좌가 표시됩니다.</div>
+      <table class="table" id="acctTable">
+        <thead>
+          <tr><th>계좌번호</th><th>종류</th><th class="money">잔액</th><th>상태</th></tr>
+        </thead>
+        <tbody id="acctTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>이체</h2>
+      <div class="sub">내 계좌에서 다른 계좌로 송금</div>
+
+      <label>출금계좌</label>
+      <select id="fromAcct"></select>
+
+      <div class="two">
+        <div>
+          <label>받는 계좌번호</label>
+          <input id="toAcct" placeholder="예: 110-1234-5678" />
+        </div>
+        <div>
+          <label>금액</label>
+          <input id="amt" type="number" min="0" step="1" placeholder="예: 10000" />
+        </div>
+      </div>
+
+      <label>메모(선택)</label>
+      <input id="memo" placeholder="예: 용돈 / 결제 / 정산" />
+
+      <div class="row" style="margin-top:10px">
+        <button id="transferBtn" class="primary" disabled>이체 실행</button>
+        <button id="refreshBtn">새로고침</button>
+      </div>
+
+      <div class="footer">
+        가입은 창구(텔러)에서만 가능합니다. (Invite-only)
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>거래 내역</h2>
+    <div class="sub">최근 30건</div>
+    <table class="table">
+      <thead>
+        <tr><th>시간</th><th>유형</th><th>설명</th><th class="money">금액</th></tr>
+      </thead>
+      <tbody id="txTbody"></tbody>
+    </table>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
 <script>
-document.getElementById('loginBtn').onclick=()=>netlifyIdentity.open('login');
-netlifyIdentity.on('login',()=>{
- document.getElementById('app').classList.remove('hidden');
-});
+  const $ = (s)=>document.querySelector(s);
+  const fmt = (n)=> (Number(n)||0).toLocaleString('ko-KR');
+
+  function toast(msg, kind=''){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'toast show';
+    if(kind==='good') t.style.borderColor = '#2ee59d55';
+    else if(kind==='bad') t.style.borderColor = '#ff6b6b55';
+    else t.style.borderColor = '#273058';
+    setTimeout(()=>t.className='toast', 2600);
+  }
+
+  async function api(action, payload){
+    const u = netlifyIdentity.currentUser();
+    if(!u) throw new Error('로그인 필요');
+    const jwt = await u.jwt();
+    const r = await fetch('/.netlify/functions/bank', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization': 'Bearer ' + jwt
+      },
+      body: JSON.stringify({ action, payload })
+    });
+    const txt = await r.text();
+    let data;
+    try{ data = JSON.parse(txt) } catch { data = { raw: txt } }
+    if(!r.ok) throw new Error(data?.error || ('요청 실패: ' + r.status));
+    return data;
+  }
+
+  function setLoggedInUI(user){
+    $('#logoutBtn').disabled = !user;
+    $('#transferBtn').disabled = !user;
+    $('#loginBtn').textContent = user ? '내 계정' : '로그인';
+    $('#who').textContent = user ? (user.email || '로그인됨') : '로그인 필요';
+    $('#acctHint').textContent = user ? '내 계좌를 불러오는 중...' : '로그인 후 내 계좌가 표시됩니다.';
+  }
+
+  function renderAccounts(accounts){
+    const tb = $('#acctTbody');
+    tb.innerHTML = '';
+    const sel = $('#fromAcct');
+    sel.innerHTML = '';
+    (accounts||[]).forEach(a=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${a.no}</td>
+        <td>${a.type}</td>
+        <td class="money">${fmt(a.balance)}원</td>
+        <td>${a.status}</td>`;
+      tb.appendChild(tr);
+
+      const opt = document.createElement('option');
+      opt.value = a.no;
+      opt.textContent = `${a.no} · ${a.type} · ${fmt(a.balance)}원`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderTx(txs){
+    const tb = $('#txTbody');
+    tb.innerHTML = '';
+    (txs||[]).slice(0,30).forEach(x=>{
+      const tr = document.createElement('tr');
+      const cls = x.amount < 0 ? 'bad' : 'good';
+      tr.innerHTML = `
+        <td>${new Date(x.ts).toLocaleString('ko-KR')}</td>
+        <td>${x.kind}</td>
+        <td>${x.desc || ''}</td>
+        <td class="money ${cls}">${(x.amount<0?'-':'')}${fmt(Math.abs(x.amount))}원</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  async function refresh(){
+    try{
+      const data = await api('customerGetMy', {});
+      renderAccounts(data.accounts || []);
+      renderTx(data.transactions || []);
+      $('#acctHint').textContent = (data.accounts?.length ? '표시 완료' : '계좌가 없습니다. 창구에서 계좌를 만들어주세요.');
+      toast('새로고침 완료', 'good');
+    }catch(e){
+      toast(e.message, 'bad');
+    }
+  }
+
+  $('#loginBtn').onclick = ()=> netlifyIdentity.open('login');
+  $('#logoutBtn').onclick = ()=> netlifyIdentity.logout();
+  $('#refreshBtn').onclick = refresh;
+
+  $('#transferBtn').onclick = async ()=>{
+    try{
+      const from = $('#fromAcct').value;
+      const to = $('#toAcct').value.trim();
+      const amount = Number($('#amt').value);
+      const memo = $('#memo').value.trim();
+      if(!from) return toast('출금계좌를 선택하세요', 'bad');
+      if(!to) return toast('받는 계좌번호를 입력하세요', 'bad');
+      if(!amount || amount<=0) return toast('금액을 올바르게 입력하세요', 'bad');
+      await api('customerTransfer', { from, to, amount, memo });
+      toast('이체 완료', 'good');
+      $('#amt').value='';
+      $('#memo').value='';
+      await refresh();
+    }catch(e){
+      toast(e.message, 'bad');
+    }
+  };
+
+  // Identity events
+  netlifyIdentity.on('init', (user)=>{
+    setLoggedInUI(user);
+    if(user) refresh();
+  });
+  netlifyIdentity.on('login', (user)=>{
+    netlifyIdentity.close();
+    setLoggedInUI(user);
+    refresh();
+  });
+  netlifyIdentity.on('logout', ()=>{
+    setLoggedInUI(null);
+    $('#acctTbody').innerHTML='';
+    $('#txTbody').innerHTML='';
+    $('#fromAcct').innerHTML='';
+    toast('로그아웃', '');
+  });
+
+  // init
+  if(window.netlifyIdentity) netlifyIdentity.init();
 </script>
 </body>
 </html>

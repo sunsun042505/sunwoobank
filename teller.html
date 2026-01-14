@@ -1,40 +1,611 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<title>TellerDesk</title>
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-<style>
-body{font-family:sans-serif;background:#111;color:#eee}
-#conn{padding:4px 8px;border-radius:6px}
-.online{background:#0a5}
-.offline{background:#a33}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SunwooBank · Teller</title>
+  <style>
+    :root{
+      --bg:#0b0f16;
+      --card:#111828;
+      --line:#26304b;
+      --text:#e8ecff;
+      --muted:#aab4decc;
+      --good:#2ee59d;
+      --bad:#ff6b6b;
+      --warn:#ffd166;
+      --accent:#7c5cff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial;
+      background: radial-gradient(900px 600px at 18% 12%, #2a2b6b55, transparent 55%),
+                  radial-gradient(900px 600px at 82% 18%, #6b2a5e55, transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:22px}
+    .top{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:#0d1424cc;
+      backdrop-filter: blur(10px);
+    }
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{
+      width:36px;height:36px;border-radius:12px;
+      background: linear-gradient(135deg,#20e3b2,#7c5cff);
+      box-shadow:0 10px 25px #00000066;
+    }
+    .brand h1{font-size:16px;margin:0;letter-spacing:-.2px}
+    .brand p{margin:0;color:var(--muted);font-size:12px}
+    .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .pill{
+      border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-size:12px;color:var(--muted);
+      background:#0e1736;
+    }
+    .conn.online{color:var(--good);border-color:#2ee59d55}
+    .conn.offline{color:var(--bad);border-color:#ff6b6b55}
+    button{
+      border:1px solid var(--line);
+      background:#0f1836;
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:650;
+      letter-spacing:-.2px;
+    }
+    button.primary{background:linear-gradient(135deg,#20e3b2,#7c5cff);border:none}
+    button.ghost{background:transparent}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns: 0.9fr 1.1fr; gap:14px; margin-top:14px}
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, #111a36cc, #0c1221cc);
+      border-radius:18px;
+      padding:14px;
+      box-shadow:0 20px 60px #00000055;
+      backdrop-filter: blur(8px);
+    }
+    .card h2{margin:0 0 10px 0;font-size:14px}
+    .sub{color:var(--muted);font-size:12px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#0f1836;color:var(--muted);cursor:pointer;font-size:12px}
+    .tab.active{background:linear-gradient(135deg,#20e3b2,#7c5cff);border:none;color:#061018}
+    .panel{display:none;margin-top:12px}
+    .panel.active{display:block}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    label{display:block;margin:10px 0 6px;color:#cfd8ff;font-size:12px}
+    input,select,textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background:#0b1330;
+      color:var(--text);
+      padding:10px 12px;border-radius:14px;
+      outline:none;
+    }
+    textarea{min-height:88px;resize:vertical}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .table{width:100%;border-collapse:collapse;margin-top:10px}
+    .table th,.table td{padding:10px;border-bottom:1px solid #202a52;text-align:left;font-size:13px}
+    .table th{color:#cfd8ff}
+    .money{font-variant-numeric: tabular-nums}
+    .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    .toast{
+      position:fixed;left:50%;transform:translateX(-50%);
+      bottom:20px;
+      background:#0d1424;
+      border:1px solid var(--line);
+      padding:10px 12px;border-radius:14px;
+      max-width:760px;width:calc(100% - 24px);
+      display:none;
+      z-index:50;
+    }
+    .toast.show{display:block}
+    /* modal */
+    .modalBack{
+      position:fixed;inset:0;background:#00000088;display:none;align-items:center;justify-content:center;z-index:80;
+    }
+    .modalBack.show{display:flex}
+    .modal{
+      width:min(520px, calc(100% - 24px));
+      border:1px solid var(--line);border-radius:18px;
+      background:linear-gradient(180deg,#121a33,#0b1020);
+      padding:16px;
+      box-shadow:0 30px 90px #000000aa;
+    }
+    .modal h3{margin:0 0 6px 0}
+    .modal p{margin:0 0 12px 0;color:var(--muted);font-size:12px}
+    .footer{margin-top:10px;color:var(--muted);font-size:12px}
+  </style>
 </head>
 <body>
-<h1>TellerDesk</h1>
-<span id="conn" class="offline">OFFLINE</span>
-<br/>
-<label>텔러 코드 <input id="code" value="0612"/></label>
-<button id="login">로그인</button>
-<button id="save">온라인 저장</button>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>선우뱅크 · TellerDesk</h1>
+        <p>입출금 · 계좌 · 예적금/상품 · 제신고 · 인터넷뱅킹 가입</p>
+      </div>
+    </div>
+    <div class="actions">
+      <span id="connTag" class="pill conn offline">OFFLINE</span>
+      <span id="who" class="pill">미로그인</span>
+      <button id="openLogin" class="primary">텔러 로그인</button>
+      <button id="logout" class="ghost" disabled>로그아웃</button>
+      <button id="sync" disabled>온라인 동기화</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>업무 탭</h2>
+      <div class="sub">텔러 로그인(코드 0612) 후 기능이 활성화됩니다.</div>
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="cust">고객/계좌</div>
+        <div class="tab" data-tab="cash">입·출금</div>
+        <div class="tab" data-tab="tx">이체/정산</div>
+        <div class="tab" data-tab="prod">예적금/상품</div>
+        <div class="tab" data-tab="rep">제신고/정정</div>
+        <div class="tab" data-tab="ib">인터넷뱅킹 가입</div>
+      </div>
+
+      <div class="panel active" id="p-cust">
+        <h2 style="margin-top:12px">고객 생성</h2>
+        <div class="sub">공용DB에 고객/기본계좌를 생성합니다.</div>
+        <label>고객 이름</label>
+        <input id="newName" placeholder="예: 이선우" />
+        <label>고객 이메일(고객 로그인 매핑용)</label>
+        <input id="newEmail" placeholder="예: sunwoo@example.com" />
+        <div class="row" style="margin-top:10px">
+          <button id="createCustomer" class="primary" disabled>고객+계좌 생성</button>
+          <button id="reloadAll" disabled>전체 목록 새로고침</button>
+        </div>
+
+        <h2 style="margin-top:16px">전체 고객 목록</h2>
+        <div class="sub">검색/확인 (최근 50명)</div>
+        <label>검색</label>
+        <input id="q" placeholder="이름/이메일/고객번호/계좌번호" />
+        <table class="table">
+          <thead><tr><th>고객번호</th><th>이름</th><th>이메일</th><th>대표계좌</th></tr></thead>
+          <tbody id="custTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="p-cash">
+        <h2 style="margin-top:12px">입금/출금</h2>
+        <div class="sub">계좌번호 기준으로 처리됩니다.</div>
+        <label>계좌번호</label>
+        <input id="cashAcct" placeholder="예: 110-1234-5678" />
+        <div class="two">
+          <div>
+            <label>금액</label>
+            <input id="cashAmt" type="number" min="0" step="1" placeholder="예: 5000" />
+          </div>
+          <div>
+            <label>업무</label>
+            <select id="cashKind">
+              <option value="deposit">입금</option>
+              <option value="withdraw">출금</option>
+            </select>
+          </div>
+        </div>
+        <label>메모</label>
+        <input id="cashMemo" placeholder="예: 창구입금 / 현금출금" />
+        <div class="row" style="margin-top:10px">
+          <button id="doCash" class="primary" disabled>처리</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-tx">
+        <h2 style="margin-top:12px">이체/정산</h2>
+        <div class="sub">텔러 권한으로 처리됩니다.</div>
+        <label>출금 계좌</label>
+        <input id="tFrom" placeholder="예: 110-1234-5678" />
+        <label>입금 계좌</label>
+        <input id="tTo" placeholder="예: 110-9876-5432" />
+        <div class="two">
+          <div>
+            <label>금액</label>
+            <input id="tAmt" type="number" min="0" step="1" />
+          </div>
+          <div>
+            <label>메모</label>
+            <input id="tMemo" placeholder="예: 창구이체" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button id="doTransfer" class="primary" disabled>이체 실행</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-prod">
+        <h2 style="margin-top:12px">예적금/상품 가입</h2>
+        <div class="sub">공용DB에 상품 가입 기록을 남깁니다.</div>
+
+        <label>고객번호 또는 이메일</label>
+        <input id="prodWho" placeholder="예: C-1002 또는 sunwoo@example.com" />
+        <label>상품 종류</label>
+        <select id="prodType">
+          <option value="적금">적금</option>
+          <option value="예금">예금</option>
+          <option value="청약">청약</option>
+          <option value="체크카드">체크카드</option>
+        </select>
+        <div class="two">
+          <div>
+            <label>월 납입/가입 금액</label>
+            <input id="prodAmt" type="number" min="0" step="1" placeholder="예: 20000" />
+          </div>
+          <div>
+            <label>기간(개월)</label>
+            <input id="prodMonths" type="number" min="1" step="1" value="12" />
+          </div>
+        </div>
+        <label>메모</label>
+        <input id="prodMemo" placeholder="예: 청소년 우대" />
+        <div class="row" style="margin-top:10px">
+          <button id="prodEnroll" class="primary" disabled>가입 처리</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-rep">
+        <h2 style="margin-top:12px">제신고/정정</h2>
+        <div class="sub">주소/연락처/분실/재발급/정보정정 등 기록.</div>
+        <label>고객번호 또는 이메일</label>
+        <input id="repWho" placeholder="예: C-1002 또는 sunwoo@example.com" />
+        <label>처리 내용</label>
+        <textarea id="repText" placeholder="예: 연락처 변경, 분실신고, 재발급 신청..."></textarea>
+        <div class="row" style="margin-top:10px">
+          <button id="repSave" class="primary" disabled>기록 저장</button>
+        </div>
+      </div>
+
+      <div class="panel" id="p-ib">
+        <h2 style="margin-top:12px">인터넷뱅킹 가입(Identity 계정 생성)</h2>
+        <div class="sub">Invite-only 환경에서 텔러가 직접 계정을 즉시 생성(B 방식). 이메일 확인 OFF 권장(사용자 설정대로 OFF).</div>
+
+        <label>이름</label>
+        <input id="ibName" placeholder="예: 이선우" />
+        <label>이메일</label>
+        <input id="ibEmail" placeholder="예: sunwoo@example.com" />
+        <label>임시 비밀번호</label>
+        <input id="ibPass" placeholder="예: Temp@1234" />
+
+        <div class="row" style="margin-top:10px">
+          <button id="ibEnroll" class="primary" disabled>계정 생성 + DB 연결</button>
+        </div>
+
+        <div class="footer">
+          ※ 이 기능은 Netlify 환경변수 <b>IDENTITY_ADMIN_TOKEN</b> 이 필요합니다. (없으면 오류 표시)
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>작업 현황</h2>
+      <div class="sub">공용DB 최신 상태</div>
+      <div class="row" style="margin-top:8px">
+        <span class="pill" id="dbMeta">DB: -</span>
+        <span class="pill" id="counts">고객: - / 계좌: -</span>
+      </div>
+
+      <h2 style="margin-top:16px">최근 거래</h2>
+      <div class="sub">최근 40건</div>
+      <table class="table">
+        <thead><tr><th>시간</th><th>유형</th><th>설명</th><th class="money">금액</th></tr></thead>
+        <tbody id="txTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- Login modal -->
+<div class="modalBack" id="loginBack">
+  <div class="modal">
+    <h3>텔러 로그인</h3>
+    <p>창구용 자체 로그인입니다. (고객 Netlify 로그인과 분리)</p>
+
+    <label>텔러 코드</label>
+    <input id="code" placeholder="0612" value="0612" />
+
+    <div class="row" style="margin-top:12px">
+      <button id="doLogin" class="primary">로그인</button>
+      <button id="cancelLogin" class="ghost">닫기</button>
+    </div>
+
+    <div class="footer">
+      코드가 맞으면 온라인(Blobs) 기능이 활성화됩니다.
+    </div>
+  </div>
+</div>
+
 <script>
-const conn=document.getElementById('conn');
-async function ping(){
- try{
-  const r=await fetch('/.netlify/functions/bank?ping=1');
-  if(await r.text()==='pong'){conn.textContent='ONLINE';conn.className='online';}
- }catch(e){}
-}
-ping();
-document.getElementById('login').onclick=()=>netlifyIdentity.open('login');
-document.getElementById('save').onclick=async()=>{
- const u=netlifyIdentity.currentUser(); if(!u) return alert('로그인 필요');
- const t=await u.jwt();
- const r=await fetch('/.netlify/functions/bank',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},
- body:JSON.stringify({action:'tellerDeskSet',payload:{tellerCode:document.getElementById('code').value,data:{ts:Date.now()}}})});
- alert(r.status);
-};
+  const $ = (s)=>document.querySelector(s);
+  const fmt = (n)=> (Number(n)||0).toLocaleString('ko-KR');
+  const connTag = $('#connTag');
+
+  const state = {
+    tellerCode: localStorage.getItem('tellerCode') || '',
+    tellerAuthed: localStorage.getItem('tellerAuthed') === '1',
+    db: null
+  };
+
+  function toast(msg, kind=''){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'toast show';
+    if(kind==='good') t.style.borderColor = '#2ee59d55';
+    else if(kind==='bad') t.style.borderColor = '#ff6b6b55';
+    else t.style.borderColor = '#26304b';
+    setTimeout(()=>t.className='toast', 2600);
+  }
+
+  function setConn(ok){
+    connTag.textContent = ok ? 'ONLINE' : 'OFFLINE';
+    connTag.classList.remove('online','offline');
+    connTag.classList.add(ok ? 'online' : 'offline');
+  }
+
+  async function ping(){
+    try{
+      const r = await fetch('/.netlify/functions/bank?ping=1');
+      const t = await r.text();
+      setConn(t.trim()==='pong');
+      return t.trim()==='pong';
+    }catch(e){
+      setConn(false); return false;
+    }
+  }
+
+  async function tellerApi(action, payload){
+    const r = await fetch('/.netlify/functions/bank', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-Teller-Code': state.tellerCode || ''
+      },
+      body: JSON.stringify({ action, payload })
+    });
+    const txt = await r.text();
+    let data;
+    try{ data = JSON.parse(txt) } catch { data = { raw: txt } }
+    if(!r.ok) throw new Error(data?.error || ('요청 실패: ' + r.status));
+    return data;
+  }
+
+  function setAuthedUI(){
+    $('#who').textContent = state.tellerAuthed ? `텔러 로그인됨 (코드 ${state.tellerCode||'-'})` : '미로그인';
+    $('#logout').disabled = !state.tellerAuthed;
+    $('#sync').disabled = !state.tellerAuthed;
+
+    const ena = !!state.tellerAuthed;
+    ['createCustomer','reloadAll','doCash','doTransfer','prodEnroll','repSave','ibEnroll'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.disabled = !ena;
+    });
+  }
+
+  function switchTab(tab){
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.classList.toggle('active', t.dataset.tab===tab);
+    });
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('p-'+tab).classList.add('active');
+  }
+
+  $('#tabs').addEventListener('click', (e)=>{
+    const t = e.target.closest('.tab');
+    if(!t) return;
+    switchTab(t.dataset.tab);
+  });
+
+  // Login modal
+  const back = $('#loginBack');
+  $('#openLogin').onclick = ()=> { back.classList.add('show'); $('#code').focus(); };
+  $('#cancelLogin').onclick = ()=> back.classList.remove('show');
+
+  $('#doLogin').onclick = async ()=>{
+    const code = $('#code').value.trim();
+    if(!code) return toast('텔러 코드를 입력하세요', 'bad');
+    state.tellerCode = code;
+    // 로컬 세션
+    localStorage.setItem('tellerCode', code);
+    // 서버에서 검증
+    try{
+      await ping();
+      await tellerApi('tellerAuth', { });
+      state.tellerAuthed = true;
+      localStorage.setItem('tellerAuthed','1');
+      back.classList.remove('show');
+      toast('로그인 완료', 'good');
+      setAuthedUI();
+      await loadAll();
+    }catch(e){
+      state.tellerAuthed = false;
+      localStorage.removeItem('tellerAuthed');
+      toast(e.message, 'bad');
+      setAuthedUI();
+    }
+  };
+
+  $('#logout').onclick = ()=>{
+    state.tellerAuthed = false;
+    localStorage.removeItem('tellerAuthed');
+    toast('로그아웃', '');
+    setAuthedUI();
+  };
+
+  $('#sync').onclick = loadAll;
+
+  function renderMeta(db){
+    const meta = db?.meta || {};
+    $('#dbMeta').textContent = `DB: ${meta.updatedAt ? new Date(meta.updatedAt).toLocaleString('ko-KR') : '-'}`;
+    $('#counts').textContent = `고객: ${(db?.customers||[]).length} / 계좌: ${(db?.accounts||[]).length}`;
+  }
+
+  function renderCustomers(db){
+    const q = ($('#q').value || '').trim().toLowerCase();
+    const list = (db?.customers||[]).slice().reverse().slice(0, 200).filter(c=>{
+      if(!q) return true;
+      const rep = (c.primaryAccount||'').toLowerCase();
+      return (c.id||'').toLowerCase().includes(q) ||
+             (c.name||'').toLowerCase().includes(q) ||
+             (c.email||'').toLowerCase().includes(q) ||
+             rep.includes(q);
+    }).slice(0,50);
+
+    const tb = $('#custTbody');
+    tb.innerHTML='';
+    list.forEach(c=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${c.id}</td><td>${c.name||''}</td><td>${c.email||''}</td><td>${c.primaryAccount||''}</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  function renderTx(db){
+    const tb = $('#txTbody');
+    tb.innerHTML='';
+    (db?.transactions||[]).slice().reverse().slice(0,40).forEach(x=>{
+      const tr = document.createElement('tr');
+      const cls = x.amount < 0 ? 'bad' : 'good';
+      tr.innerHTML = `
+        <td>${new Date(x.ts).toLocaleString('ko-KR')}</td>
+        <td>${x.kind}</td>
+        <td>${x.desc || ''}</td>
+        <td class="money ${cls}">${(x.amount<0?'-':'')}${fmt(Math.abs(x.amount))}원</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  async function loadAll(){
+    if(!state.tellerAuthed) return;
+    try{
+      const data = await tellerApi('tellerGetAll', {});
+      state.db = data.db;
+      renderMeta(state.db);
+      renderCustomers(state.db);
+      renderTx(state.db);
+      toast('온라인 동기화 완료', 'good');
+    }catch(e){
+      toast(e.message, 'bad');
+    }
+  }
+
+  $('#q').addEventListener('input', ()=> renderCustomers(state.db));
+
+  // Actions
+  $('#createCustomer').onclick = async ()=>{
+    try{
+      const name = $('#newName').value.trim();
+      const email = $('#newEmail').value.trim();
+      if(!name) return toast('이름을 입력하세요', 'bad');
+      const data = await tellerApi('tellerCreateCustomer', { name, email });
+      toast(`생성 완료: ${data.customerId} / ${data.accountNo}`, 'good');
+      $('#newName').value=''; $('#newEmail').value='';
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  $('#reloadAll').onclick = loadAll;
+
+  $('#doCash').onclick = async ()=>{
+    try{
+      const accountNo = $('#cashAcct').value.trim();
+      const amount = Number($('#cashAmt').value);
+      const kind = $('#cashKind').value;
+      const memo = $('#cashMemo').value.trim();
+      if(!accountNo) return toast('계좌번호를 입력하세요','bad');
+      if(!amount || amount<=0) return toast('금액을 올바르게 입력하세요','bad');
+      await tellerApi('tellerCash', { accountNo, amount, kind, memo });
+      toast('처리 완료', 'good');
+      $('#cashAmt').value=''; $('#cashMemo').value='';
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  $('#doTransfer').onclick = async ()=>{
+    try{
+      const from = $('#tFrom').value.trim();
+      const to = $('#tTo').value.trim();
+      const amount = Number($('#tAmt').value);
+      const memo = $('#tMemo').value.trim();
+      if(!from||!to) return toast('계좌번호를 입력하세요','bad');
+      if(!amount||amount<=0) return toast('금액을 올바르게 입력하세요','bad');
+      await tellerApi('tellerTransfer', { from, to, amount, memo });
+      toast('이체 완료', 'good');
+      $('#tAmt').value=''; $('#tMemo').value='';
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  $('#prodEnroll').onclick = async ()=>{
+    try{
+      const who = $('#prodWho').value.trim();
+      const type = $('#prodType').value;
+      const amount = Number($('#prodAmt').value);
+      const months = Number($('#prodMonths').value);
+      const memo = $('#prodMemo').value.trim();
+      if(!who) return toast('고객을 입력하세요','bad');
+      if(!amount||amount<=0) return toast('금액을 입력하세요','bad');
+      await tellerApi('tellerEnrollProduct', { who, type, amount, months, memo });
+      toast('상품 가입 기록 저장', 'good');
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  $('#repSave').onclick = async ()=>{
+    try{
+      const who = $('#repWho').value.trim();
+      const text = $('#repText').value.trim();
+      if(!who) return toast('고객을 입력하세요','bad');
+      if(!text) return toast('내용을 입력하세요','bad');
+      await tellerApi('tellerReport', { who, text });
+      toast('제신고/정정 저장', 'good');
+      $('#repText').value='';
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  $('#ibEnroll').onclick = async ()=>{
+    try{
+      const name = $('#ibName').value.trim();
+      const email = $('#ibEmail').value.trim();
+      const password = $('#ibPass').value;
+      if(!name||!email||!password) return toast('이름/이메일/임시비밀번호를 입력하세요','bad');
+      const data = await tellerApi('tellerCreateIdentityUser', { name, email, password });
+      toast(`계정 생성 완료: ${data.email}`, 'good');
+      $('#ibPass').value='';
+      await loadAll();
+    }catch(e){ toast(e.message,'bad'); }
+  };
+
+  // Boot
+  (async ()=>{
+    await ping();
+    // restore authed
+    if(state.tellerAuthed && state.tellerCode){
+      try{
+        await tellerApi('tellerAuth', {});
+        setAuthedUI();
+        await loadAll();
+      }catch(e){
+        state.tellerAuthed=false; localStorage.removeItem('tellerAuthed');
+        setAuthedUI();
+      }
+    }else{
+      // if code exists, prefill
+      if(state.tellerCode) $('#code').value = state.tellerCode;
+      setAuthedUI();
+    }
+    // keep ping alive
+    setInterval(ping, 9000);
+  })();
 </script>
 </body>
 </html>

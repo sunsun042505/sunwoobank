@@ -1,45 +1,20 @@
-# 선우뱅크 (Netlify + GitHub) 데모
+# SunwooBank (Netlify + GitHub)
 
-이 프로젝트는 **정적 페이지 + Netlify Functions + Netlify Identity + Netlify Blobs** 조합으로,
-“고객 온라인뱅킹( index.html )”과 “직원 창구( teller.html )”를 같이 넣어둔 데모야.
+## 구조
+- index.html : 고객(인터넷뱅킹) 화면 — Netlify Identity 로그인
+- teller.html : 창구(텔러) 화면 — 자체 로그인(코드 0612)
+- netlify/functions/bank.js : API + Netlify Blobs(DB)
 
-> ⚠️ 실제 금융 서비스 아님. 보안/규정/검증 로직은 데모 수준.
+## 필수 Netlify 설정
+1) Site settings → Identity → Enable
+2) Identity → Registration → Invite only (사용자 설정대로)
+3) (B 방식) Site settings → Environment variables 에 아래 추가:
+   - IDENTITY_ADMIN_TOKEN : Netlify Identity Admin API 토큰(GoTrue admin JWT)
 
-## 폴더 구조
+> 이 토큰이 없으면 텔러의 "인터넷뱅킹 가입(계정 생성)" 기능만 실패하고,
+> 나머지(공용DB/계좌/이체/입출금)는 정상 동작합니다.
 
-- `index.html` : 고객 화면(로그인, 계좌조회, 이체, 예·적금, 공과금, 카드, 내 정보, 고객센터)
-- `teller.html` : 직원 창구 화면(이전에 만든 파일 그대로 포함)
-- `netlify/functions/bank.js` : API (온라인 저장 포함)
-- `netlify.toml` : functions 경로 지정
-- `package.json` : `@netlify/blobs` 의존성
-
-## Netlify에서 켜야 하는 것 (중요)
-
-1) Netlify에 GitHub 레포 연결해서 배포  
-2) Netlify 대시보드 → **Identity** → Enable  
-   - Registration은 일단 Open(테스트용) / Invite only(운영용) 원하는대로  
-3) Deploy 다시 한 번
-
-## 동작 원리
-
-- 로그인/회원가입: **Netlify Identity 위젯**
-- 데이터 저장: **Netlify Functions**에서 `@netlify/blobs`로 사용자별 JSON 저장
-- 프론트에서 API 호출: `fetch("/.netlify/functions/bank", { authorization: "Bearer <token>" })`
-
-## 로컬 테스트 (선택)
-
-Netlify CLI 쓰면 편함:
-
-- Netlify CLI 설치 후 `netlify dev` 실행  
-- 로컬에서는 Identity 컨텍스트가 제한될 수 있어서, 제일 정확한 건 “배포된 URL”에서 테스트!
-
-
-
-## 콘솔에 `/.netlify/identity/settings 404`가 뜰 때
-
-이건 **코드 문제가 아니라**, 지금 페이지가 Netlify Identity가 켜진 “Netlify 사이트”로 서비스되고 있지 않다는 뜻이야.
-
-- GitHub 미리보기/로컬(file://, localhost)에서는 항상 404
-- Netlify 대시보드에서 해당 사이트의 **Identity를 Enable** 했는지 확인
-- Enable 후에는 Deploys에서 **Trigger deploy** 한 번 눌러서 재배포
-- 배포 URL에서 `/.netlify/identity/settings`를 열었을 때 JSON이 뜨면 정상
+## 테스트
+- Functions 핑: /.netlify/functions/bank?ping=1 → pong
+- 고객: 로그인 후 계좌조회/이체
+- 텔러: 코드 0612로 로그인 후 고객/계좌 생성, 입출금, 이체, 상품가입, 인터넷뱅킹 가입(계정 생성)
