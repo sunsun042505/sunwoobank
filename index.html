@@ -44,12 +44,6 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
 .card-title{font-weight:800;margin-bottom:6px}
 .card-desc{opacity:.8;font-size:13px;line-height:1.4}
 @media (max-width:880px){.cards{grid-template-columns:1fr} .hero h1{font-size:36px}}
-
-.p-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff}
-.p-title{font-size:12px;font-weight:900}
-.p-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
-.p-time{font-size:12px;color:var(--muted);white-space:nowrap}
-.empty{font-size:12px;color:var(--muted);padding:6px 0}
 </style>
 </head>
 <body>
@@ -132,13 +126,6 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
         <div id="custInfo" class="note"></div>
         <div class="hr"></div>
         <div id="acctList"></div>
-        <div id="productsPanel" class="hidden">
-          <div class="hr"></div>
-          <h2>가입한 상품</h2>
-          <div class="note">창구/고객 화면에서 가입한 내역</div>
-          <div class="hr"></div>
-          <div id="productsList"></div>
-        </div>
       </div>
 
       <div class="card">
@@ -184,6 +171,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 const loginBtn = document.getElementById('loginBtn');
 const loginMsg = document.getElementById('loginMsg');
 const loginCard = document.getElementById('loginCard');
+const landing = document.getElementById('landing');
 const app = document.getElementById('app');
 const custInfo = document.getElementById('custInfo');
 const acctList = document.getElementById('acctList');
@@ -193,16 +181,6 @@ const msg = document.getElementById('msg');
 
 function money(n){ return (Number(n)||0).toLocaleString('ko-KR') + '원'; }
 
-function esc(s){
-  return String(s ?? '')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
-}
-
-
 async function getConfig(){
   const r = await fetch('/.netlify/functions/bank?config=1', { cache:'no-store' });
   const j = await r.json();
@@ -210,20 +188,10 @@ async function getConfig(){
   return j;
 }
 
-let supabase = null;
-let __cfgError = null;
-try{
-  const cfg = await getConfig();
-  supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-}catch(e){
-  __cfgError = e;
-  who.textContent = '서버오류';
-  loginMsg.textContent = '서버 연결 실패: ' + (e.message || e);
-  // config가 없어도 UI는 정상(랜딩) 유지
-  showLanding();
-}
+const cfg = await getConfig();
+const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
 async function bankApi(action, payload){
-  if(!supabase) throw new Error('config_load_failed');
   const { data: { session } } = await supabase.auth.getSession();
   if(!session) throw new Error('로그인 필요');
   const r = await fetch('/.netlify/functions/bank', {
@@ -239,42 +207,26 @@ async function bankApi(action, payload){
   return j;
 }
 
-
-const landing = document.getElementById('landing');
-
-function showLanding(){
-  if (landing) landing.classList.remove('hidden');
-  loginCard.classList.add('hidden');
-  app.classList.add('hidden');
-}
-function showLogin(){
-  if (landing) landing.classList.add('hidden');
-  loginCard.classList.remove('hidden');
-  app.classList.add('hidden');
-  document.getElementById('email')?.focus();
-}
-function showApp(){
-  if (landing) landing.classList.add('hidden');
-  loginCard.classList.add('hidden');
-  app.classList.remove('hidden');
-}
-
 function setLoggedOut(){
   who.textContent = '로그인 필요';
   logoutBtn.classList.add('hidden');
-  showLanding();
+  if (landing) landing.classList.remove('hidden');
+  loginCard.classList.add('hidden');
+  app.classList.add('hidden');
 }
 
 function setLoggedIn(email){
   who.textContent = email;
   logoutBtn.classList.remove('hidden');
-  showApp();
+  loginCard.classList.add('hidden');
+  if (landing) landing.classList.add('hidden');
+  app.classList.remove('hidden');
 }
 
 function renderAccounts(accounts){
   acctList.innerHTML = '';
   fromSel.innerHTML = '';
-  (accounts || []).forEach(a=>{
+  accounts.forEach(a=>{
     const flags = a.flags || {};
     const div = document.createElement('div');
     div.className = 'card';
@@ -291,7 +243,15 @@ function renderAccounts(accounts){
           </div>
         </div>
         <div style="font-weight:900">${money(a.balance)}</div>
-      </div>`;
+      
+<div class="panel" id="productsPanel" style="display:none">
+  <div class="panel-head">
+    <div class="panel-title">가입한 상품</div>
+    <div class="panel-sub">창구/고객 화면에서 가입한 내역</div>
+  </div>
+  <div id="productsList" class="list"></div>
+</div>
+</div>`;
     acctList.appendChild(div);
 
     const opt = document.createElement('option');
@@ -317,15 +277,12 @@ async function bootstrap(){
   renderAccounts(j.accounts || []);
   renderTx(j.txs || []);
   renderProducts(j.products || []);
-  showApp();
+  document.getElementById('landing')?.classList.add('hidden');
+  document.getElementById('app')?.classList.remove('hidden');
 }
 
 loginBtn.onclick = async ()=>{
   loginMsg.textContent = '';
-  if(!supabase){
-    loginMsg.textContent = '서버 연결 실패(Functions/config).';
-    return;
-  }
   try{
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('pw').value;
@@ -358,14 +315,10 @@ document.getElementById('sendBtn').onclick = async ()=>{
   }
 };
 
-if(supabase){
-  const { data: { session } } = await supabase.auth.getSession();
-  if(session){
-    setLoggedIn(session.user.email);
-    await bootstrap();
-  }else{
-    setLoggedOut();
-  }
+const { data: { session } } = await supabase.auth.getSession();
+if(session){
+  setLoggedIn(session.user.email);
+  await bootstrap();
 }else{
   setLoggedOut();
 }
@@ -374,48 +327,45 @@ function renderProducts(products){
   const panel = document.getElementById('productsPanel');
   const list = document.getElementById('productsList');
   if (!panel || !list) return;
-
   const items = Array.isArray(products) ? products : [];
-  panel.classList.remove('hidden');
-
   if (!items.length){
+    panel.style.display = 'block';
     list.innerHTML = '<div class="empty">가입한 상품이 없습니다.</div>';
     return;
   }
-
-  const pretty = (v)=>{
-    if (v === null || v === undefined) return '';
-    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
-    if (Array.isArray(v)) return v.slice(0,4).map(pretty).join(', ');
-    if (typeof v === 'object') {
-      const keys = Object.keys(v).filter(k=> !['pin','pin_hash','pinHash','creditAgree'].includes(k));
-      return keys.slice(0,4).map(k=> `${k}:${pretty(v[k])}`).join(' · ');
-    }
-    return String(v);
-  };
-
+  panel.style.display = 'block';
   list.innerHTML = items.map(p=>{
-    const dt = p.created_at ? new Date(p.created_at).toLocaleString('ko-KR') : '';
-    const cat = (p.category || '').toString();
-    const type = (p.product_type || '').toString();
-    const detail = pretty(p.data || {});
-    const badge = cat ? `<span class="badge">${esc(cat)}</span>` : '';
-    return `<div class="p-item">
-      <div style="min-width:0">
-        <div class="p-title">${esc(type)} ${badge}</div>
-        <div class="p-sub">${esc(detail)}</div>
+    const dt = new Date(p.created_at).toLocaleString('ko-KR');
+    const type = (p.product_type || '').toUpperCase();
+    const detail = p.product_detail || '';
+    const status = p.status || 'submitted';
+    const last4 = p.card_pan_last4 ? (' · **** ' + p.card_pan_last4) : '';
+    return `<div class="row">
+      <div class="row-main">
+        <div class="row-title">${type} <span class="badge">${status}</span></div>
+        <div class="row-sub">${detail}${last4}</div>
       </div>
-      <div class="p-time">${dt}</div>
+      <div class="row-side">${dt}</div>
     </div>`;
   }).join('');
 }
 
+
 function initLanding(){
+  const landing = document.getElementById('landing');
+  const app = document.getElementById('app');
   const btn = document.getElementById('btnOpenLogin');
-  if (btn) btn.addEventListener('click', (e)=>{ e.preventDefault(); showLogin(); });
+  if (btn) btn.addEventListener('click', ()=>{
+    const lm = document.getElementById('loginModal');
+    if (lm) lm.classList.add('open');
+    const card = document.getElementById('loginCard');
+    if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  // 기본: 랜딩 보이기
+  if (landing) landing.style.display='block';
+  if (app) app.style.display='none';
 }
 document.addEventListener('DOMContentLoaded', initLanding);
-
 </script>
 </body>
 </html>
