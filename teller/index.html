@@ -1145,18 +1145,29 @@ if(prodApply){
 document.getElementById('login').onclick = async ()=>{
   tellerCode = (document.getElementById('code').value||'').trim();
   localStorage.setItem('tellerCode', tellerCode);
-  if(tellerCode !== '0612'){
-    loggedIn = false;
-    localStorage.setItem('tellerLoggedIn','0');
-    loginMsg.textContent = '코드가 틀림. (0612)';
-    setSessionUI();
-    return;
-  }
+
+  // 클라에서 0612 하드코딩 체크하지 말고, 서버(TELLER_CODE)로 검증
   loggedIn = true;
   localStorage.setItem('tellerLoggedIn','1');
-  loginMsg.textContent = '로그인 완료';
+  loginMsg.textContent = '코드 확인 중…';
   setSessionUI();
-  await refreshSelected();
+
+  try{
+    // 서버에서 코드 검증(정상이어야 OK)
+    await api('teller.searchCustomers', {});
+    loginMsg.textContent = '로그인 완료';
+    await refreshSelected();
+  }catch(e){
+    loggedIn = false;
+    localStorage.setItem('tellerLoggedIn','0');
+    setSessionUI();
+    const m = (e && e.message) ? e.message : String(e);
+    if(m.includes('teller_forbidden') || m.includes('403')){
+      loginMsg.textContent = '코드가 틀림. (환경변수 TELLER_CODE)';
+    }else{
+      loginMsg.textContent = '서버 오류: ' + m;
+    }
+  }
 };
 
 logoutBtn.onclick = ()=>{

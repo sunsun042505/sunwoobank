@@ -30,16 +30,30 @@ function pbkdf2Hash(pin) {
   const salt = crypto.randomBytes(16).toString("hex");
   const iter = 150000;
   const dk = crypto.pbkdf2Sync(pin, salt, iter, 32, "sha256").toString("hex");
-  return `pbkdf2$sha256$${iter}$${salt}$${dk}`;
+  // Format: pbkdf2$sha256$<iter>$<salt>$<dk>
+  return ["pbkdf2", "sha256", String(iter), salt, dk].join("$");
 }
 
 function pbkdf2Verify(pin, stored) {
   if (!stored || typeof stored !== "string") return false;
   const parts = stored.split("$");
-  if (parts.length !== 6) return false;
-  const iter = parseInt(parts[3], 10);
-  const salt = parts[4];
-  const dk = parts[5];
+  // Accept both:
+  //  - pbkdf2$sha256$<iter>$<salt>$<dk>   (5 parts)
+  //  - pbkdf2$sha256$$<iter>$$<salt>$$<dk> (legacy accidental double-$ -> empty segments)
+  let iter, salt, dk;
+  if (parts.length === 5) {
+    iter = parseInt(parts[2], 10);
+    salt = parts[3];
+    dk = parts[4];
+  } else if (parts.length === 6 && parts[2] === "") {
+    iter = parseInt(parts[3], 10);
+    salt = parts[4];
+    dk = parts[5];
+  } else {
+    return false;
+  }
+  if (!Number.isFinite(iter) || iter < 10000 || !salt || !dk) return false;
+
   const test = crypto.pbkdf2Sync(pin, salt, iter, 32, "sha256").toString("hex");
   try {
     return crypto.timingSafeEqual(Buffer.from(test, "hex"), Buffer.from(dk, "hex"));
@@ -71,9 +85,16 @@ async function adminClient() {
 }
 
 function isTellerAllowed(event) {
-  const code = (getHeader(event, "x-teller-code") || "").toString().trim();
   const expect = (process.env.TELLER_CODE || "0612").toString().trim();
-  return code === expect;
+
+  const headerCode = (getHeader(event, "x-teller-code") || "").toString().trim();
+  if (headerCode && headerCode === expect) return true;
+
+  const q = event.queryStringParameters || {};
+  const queryCode = (q.pin || q.code || "").toString().trim();
+  if (queryCode && queryCode === expect) return true;
+
+  return false;
 }
 
 async function requireCustomer(event, admin) {
@@ -221,11 +242,27 @@ exports.handler = async function handler(event) {
   try {
     if (event.httpMethod === "GET") {
       const q = event.queryStringParameters || {};
-      if (q.ping === "1") return { statusCode: 200, headers: { "cache-control": "no-store" }, body: "pong" };
-      if (q.config === "1") {
+      const p = String(event.path || "").toLowerCase();
+
+      // Health check
+      if (q.ping === "1" || p.endsWith("/ping")) {
+        return { statusCode: 200, headers: { "cache-control": "no-store" }, body: "pong" };
+      }
+
+      // Public config for front-end bootstrap
+      if (q.config === "1" || p.endsWith("/config")) {
         const { url, anon } = await requireSupabaseEnv();
         return json(200, { ok: true, supabaseUrl: url, supabaseAnonKey: anon });
       }
+
+      // Teller login ping (legacy): /.netlify/functions/bank?pin=0612
+      if (q.pin) {
+        const pin = String(q.pin).trim();
+        const expect = (process.env.TELLER_CODE || "0612").toString().trim();
+        if (pin !== expect) return bad(403, "teller_forbidden");
+        return ok({ teller: true });
+      }
+
       return bad(404, "not_found");
     }
 
@@ -270,10 +307,24 @@ exports.handler = async function handler(event) {
         txs = txData || [];
       }
 
+      
+
+      // 가입 상품(상품가입 메뉴에서 생성된 데이터) - 고객 홈에서 보여주기
+      const customerId = prof.customer_id;
+
+      const { data: products, error: productsErr } = await admin
+        .from("product_applications")
+        .select("id, created_at, category, product_type, data, account_id")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (productsErr) throw productsErr;
+
       return ok({
         customer: { customer_no: cust.customer_no, name: cust.name, email: cust.email, phone: cust.phone, address: cust.address },
         accounts: (accounts || []).map(a => ({ account_no: a.account_no, type: a.type, status: a.status, balance: a.balance, flags: a.flags, holds: a.holds })),
-        txs
+        txs,
+        products: products || [],
       });
     }
 
@@ -635,7 +686,7 @@ exports.handler = async function handler(event) {
     }
 
     if (action === "form.submit") {
-      const { token, formType, formData, signatureImage } = payload;
+      const { token, formType, formData, signatureImage, agentSignatureImage } = payload;
       if (!token) return bad(400, "token_required");
 
       const { data: ft, error: e1 } = await admin.from("form_tokens").select("*").eq("token", token).maybeSingle();
@@ -750,6 +801,39 @@ exports.handler = async function handler(event) {
       return ok({ application: row });
     }
 
+
+
+// 텔러: 작성된 서식 조회(아이패드에서 제출한 서식)
+if (action === "teller.forms.list") {
+  const customerId = (payload && payload.customerId) || null;
+  if (!customerId) return bad(400, "missing_customer", { need: "customerId" });
+
+  const limit = Math.min(Number(payload.limit || 30) || 30, 100);
+  const { data: forms, error } = await admin
+    .from("forms")
+    .select("id, created_at, status, form_type, form_data, signature_image")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return ok({ forms: forms || [] });
+}
+
+if (action === "teller.forms.get") {
+  const formId = (payload && payload.formId) || null;
+  if (!formId) return bad(400, "missing_form", { need: "formId" });
+
+  const { data: form, error } = await admin
+    .from("forms")
+    .select("*")
+    .eq("id", formId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!form) return bad(404, "not_found", { formId });
+
+  return ok({ form });
+}
 return bad(400, "unknown_action", { action });
   } catch (err) {
     return bad(500, "server_error", { message: String(err?.message || err) });
