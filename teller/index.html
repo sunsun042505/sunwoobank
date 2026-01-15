@@ -47,6 +47,13 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .card2{border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.35);border-radius:18px;padding:12px}
 @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.hidden{display:none !important}
+.modalBox{width:min(920px,100%);max-height:85vh;overflow:auto;background:#0b1224;border:1px solid var(--line);border-radius:16px;padding:16px}
+.formRow{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);cursor:pointer;margin-top:8px}
+.formRow:hover{background:rgba(255,255,255,.06)}
+.sigImg{max-width:100%;border:1px solid var(--line);border-radius:12px;background:#fff}
+.pre{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--text);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:12px}
 </style>
 </head>
 <body>
@@ -116,6 +123,17 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
             <div class="badge" id="selInfo" style="margin-top:8px;width:100%;display:block">없음</div>
             <div style="height:10px"></div>
             <button id="openFormQR" class="btn ok" style="width:100%">아이패드 서식 QR 열기(10분)</button>
+<div style="height:10px"></div>
+<button id="openForms" class="btn" style="width:100%">작성된 서식 보기</button>
+<div id="formsPanel" class="card hidden" style="margin-top:10px;padding:12px">
+  <div class="row" style="justify-content:space-between;gap:10px">
+    <div class="note">작성된 서식</div>
+    <button id="formsRefresh" class="btn">조회</button>
+  </div>
+  <div class="note" style="margin-top:6px">고객 선택 후 조회하면 최근 제출된 서식이 보여요.</div>
+  <div id="formsList" style="margin-top:10px"></div>
+</div>
+
             <div class="note" style="margin-top:8px">고객 선택 후 눌러서 QR을 아이패드로 스캔</div>
           </div>
         </div>
@@ -1691,6 +1709,151 @@ function renderProducts(){
   };
 }
 
+
+/* ===== 작성된 서식 보기 (실시간 폴링) ===== */
+const openFormsBtn = document.getElementById('openForms');
+const formsPanel = document.getElementById('formsPanel');
+const formsRefresh = document.getElementById('formsRefresh');
+const formsList = document.getElementById('formsList');
+const formModal = document.getElementById('formModal');
+const fmClose = document.getElementById('fmClose');
+const fmTitle = document.getElementById('fmTitle');
+const fmJson = document.getElementById('fmJson');
+const fmSig = document.getElementById('fmSig');
+
+let formsPollTimer = null;
+let lastFormsHash = '';
+
+function hashForms(arr){
+  try{
+    return (arr||[]).map(x=>x.id+":"+x.created_at).join("|");
+  }catch(e){ return String(Date.now()); }
+}
+
+function fmtDate(s){
+  try{ return new Date(s).toLocaleString(); }catch(e){ return s || "-"; }
+}
+
+function renderForms(forms){
+  if(!formsList) return;
+  if(!forms || forms.length===0){
+    formsList.innerHTML = '<div class="note">아직 제출된 서식이 없어요.</div>';
+    return;
+  }
+  formsList.innerHTML = forms.map(f=>{
+    const fd = f.form_data || {};
+    const title = (fd.requestType || f.form_type || '서식');
+    const who = (fd.applicantType === 'agent')
+      ? (fd.agentText ? fd.agentText : '대리인')
+      : (fd.selfName ? fd.selfName : '본인');
+    const dt = fmtDate(f.created_at);
+    return `<div class="formRow" data-formid="${f.id}">
+      <div>
+        <div style="font-weight:700">${title}</div>
+        <div class="note" style="margin-top:4px">${who} · ${f.status || 'submitted'}</div>
+      </div>
+      <div class="note" style="text-align:right;min-width:180px">${dt}</div>
+    </div>`;
+  }).join('');
+
+  // click handlers
+  [...formsList.querySelectorAll('.formRow')].forEach(row=>{
+    row.addEventListener('click', async ()=>{
+      const formId = row.getAttribute('data-formid');
+      await openFormModal(formId);
+    });
+  });
+}
+
+async function loadForms(force=false){
+  if(!formsPanel || formsPanel.classList.contains('hidden')) return;
+  if(!selectedCustomer){
+    if(force) alert('고객을 먼저 선택해줘.');
+    return;
+  }
+  try{
+    const j = await api('teller.forms.list', { customerId: selectedCustomer.id, limit: 30 });
+    const forms = j.forms || [];
+    const h = hashForms(forms);
+    if(force || h !== lastFormsHash){
+      lastFormsHash = h;
+      renderForms(forms);
+    }
+  }catch(e){
+    if(force) alert('서식 조회 실패: ' + (e.message || e));
+  }
+}
+
+async function openFormModal(formId){
+  if(!formId) return;
+  try{
+    const j = await api('teller.forms.get', { formId });
+    const f = j.form;
+    const fd = f.form_data || {};
+    const title = (fd.requestType || f.form_type || '서식');
+    if(fmTitle) fmTitle.textContent = title + " · " + fmtDate(f.created_at);
+    if(fmJson) fmJson.textContent = JSON.stringify(fd, null, 2);
+    if(fmSig) fmSig.src = (f.signature_image || '');
+    if(formModal) formModal.classList.remove('hidden');
+  }catch(e){
+    alert('서식 불러오기 실패: ' + (e.message || e));
+  }
+}
+
+function startFormsPoll(){
+  stopFormsPoll();
+  formsPollTimer = setInterval(()=>loadForms(false), 3000);
+}
+function stopFormsPoll(){
+  if(formsPollTimer) clearInterval(formsPollTimer);
+  formsPollTimer = null;
+}
+
+if(openFormsBtn){
+  openFormsBtn.addEventListener('click', async ()=>{
+    if(!formsPanel) return;
+    formsPanel.classList.toggle('hidden');
+    if(!formsPanel.classList.contains('hidden')){
+      await loadForms(true);
+      startFormsPoll();
+    }else{
+      stopFormsPoll();
+    }
+  });
+}
+if(formsRefresh){
+  formsRefresh.addEventListener('click', ()=>loadForms(true));
+}
+if(fmClose){
+  fmClose.addEventListener('click', ()=>{ if(formModal) formModal.classList.add('hidden'); });
+}
+if(formModal){
+  formModal.addEventListener('click', (e)=>{ if(e.target === formModal) formModal.classList.add('hidden'); });
+}
+
+// 고객 선택이 바뀌면(선택 고객 갱신) 서식 패널이 열려있을 때 자동 새로고침
+const _origSetSelectedCustomer = setSelectedCustomer;
+setSelectedCustomer = function(c){
+  _origSetSelectedCustomer(c);
+  loadForms(true);
+};
 </script>
+<div id="formModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modalBox">
+    <div class="row" style="justify-content:space-between;gap:10px">
+      <div>
+        <div class="note">작성된 서식</div>
+        <div id="fmTitle" style="font-weight:700;margin-top:4px">-</div>
+      </div>
+      <button id="fmClose" class="btn">닫기</button>
+    </div>
+    <div style="height:10px"></div>
+    <div class="pre" id="fmJson"></div>
+    <div style="height:10px"></div>
+    <div class="note">서명</div>
+    <img id="fmSig" class="sigImg" alt="signature" />
+  </div>
+</div>
+
 </body>
 </html>

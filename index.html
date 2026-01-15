@@ -355,12 +355,16 @@ function initLanding(){
   const landing = document.getElementById('landing');
   const app = document.getElementById('app');
   const btn = document.getElementById('btnOpenLogin');
-  if (btn) btn.addEventListener('click', ()=>{
-    const lm = document.getElementById('loginModal');
-    if (lm) lm.classList.add('open');
-    const card = document.getElementById('loginCard');
-    if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
-  });
+if (btn) btn.addEventListener('click', (e)=>{
+  e.preventDefault();
+  const card = document.getElementById('loginCard');
+  if (card) {
+    card.classList.remove('hidden');
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    document.getElementById('email')?.focus();
+  }
+});
+});
   // 기본: 랜딩 보이기
   if (landing) landing.style.display='block';
   if (app) app.style.display='none';
