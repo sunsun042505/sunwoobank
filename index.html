@@ -28,22 +28,6 @@ table{width:100%;border-collapse:collapse}
 th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
 .hidden{display:none}
 @media(max-width:980px){.grid{grid-template-columns:1fr}}
-
-.landing{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px}
-.landing-inner{width:min(980px,100%);}
-.brand{display:flex;gap:12px;align-items:center;margin-bottom:18px;opacity:.9}
-.brand .logo{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,#1dd6a8,#5b7cff);box-shadow:0 12px 30px rgba(0,0,0,.25)}
-.brand-title{font-size:16px;font-weight:800}
-.brand-sub{font-size:12px;opacity:.7}
-.hero{padding:22px 0 18px}
-.hero h1{margin:0 0 6px;font-size:44px;letter-spacing:-.5px}
-.hero p{margin:0 0 16px;opacity:.85;line-height:1.5}
-.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
-.cards .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px}
-.card-title{font-weight:800;margin-bottom:6px}
-.card-desc{opacity:.8;font-size:13px;line-height:1.4}
-@media (max-width:880px){.cards{grid-template-columns:1fr} .hero h1{font-size:36px}}
 </style>
 </head>
 <body>
@@ -85,41 +69,7 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
     <div id="loginMsg" class="note" style="margin-top:10px"></div>
   </div>
 
-  
-<div id="landing" class="landing">
-  <div class="landing-inner">
-    <div class="brand">
-      <div class="logo"></div>
-      <div>
-        <div class="brand-title">선우은행</div>
-        <div class="brand-sub">데모 · 실제 금융 서비스 아님</div>
-      </div>
-    </div>
-    <div class="hero">
-      <h1>SunwooBank</h1>
-      <p>계좌조회 · 이체 · 가입상품 · 서식요청(아이패드)까지<br/>Netlify + Functions + Supabase 데모</p>
-      <div class="hero-actions">
-        <button id="btnOpenLogin" class="btn primary">로그인</button>
-        <a class="btn ghost" href="teller/">텔러 화면</a>
-      </div>
-    </div>
-    <div class="cards">
-      <div class="card">
-        <div class="card-title">고객</div>
-        <div class="card-desc">로그인 후 계좌/이체/가입상품 확인</div>
-      </div>
-      <div class="card">
-        <div class="card-title">텔러</div>
-        <div class="card-desc">창구 업무 + 아이패드 서식 조회</div>
-      </div>
-      <div class="card">
-        <div class="card-title">아이패드 서식</div>
-        <div class="card-desc">QR로 열고 제출하면 텔러에서 확인</div>
-      </div>
-    </div>
-  </div>
-</div>
-<div id="app" class="hidden">
+  <div id="app" class="hidden">
     <div class="grid">
       <div class="card">
         <h2>내 계좌</h2>
@@ -240,15 +190,7 @@ function renderAccounts(accounts){
           </div>
         </div>
         <div style="font-weight:900">${money(a.balance)}</div>
-      
-<div class="panel" id="productsPanel" style="display:none">
-  <div class="panel-head">
-    <div class="panel-title">가입한 상품</div>
-    <div class="panel-sub">창구/고객 화면에서 가입한 내역</div>
-  </div>
-  <div id="productsList" class="list"></div>
-</div>
-</div>`;
+      </div>`;
     acctList.appendChild(div);
 
     const opt = document.createElement('option');
@@ -273,9 +215,6 @@ async function bootstrap(){
   custInfo.textContent = `고객번호: ${j.customer.customer_no} · ${j.customer.name}`;
   renderAccounts(j.accounts || []);
   renderTx(j.txs || []);
-  renderProducts(j.products || []);
-  document.getElementById('landing')?.classList.add('hidden');
-  document.getElementById('app')?.classList.remove('hidden');
 }
 
 loginBtn.onclick = async ()=>{
@@ -319,51 +258,6 @@ if(session){
 }else{
   setLoggedOut();
 }
-
-function renderProducts(products){
-  const panel = document.getElementById('productsPanel');
-  const list = document.getElementById('productsList');
-  if (!panel || !list) return;
-  const items = Array.isArray(products) ? products : [];
-  if (!items.length){
-    panel.style.display = 'block';
-    list.innerHTML = '<div class="empty">가입한 상품이 없습니다.</div>';
-    return;
-  }
-  panel.style.display = 'block';
-  list.innerHTML = items.map(p=>{
-    const dt = new Date(p.created_at).toLocaleString('ko-KR');
-    const type = (p.product_type || '').toUpperCase();
-    const detail = p.product_detail || '';
-    const status = p.status || 'submitted';
-    const last4 = p.card_pan_last4 ? (' · **** ' + p.card_pan_last4) : '';
-    return `<div class="row">
-      <div class="row-main">
-        <div class="row-title">${type} <span class="badge">${status}</span></div>
-        <div class="row-sub">${detail}${last4}</div>
-      </div>
-      <div class="row-side">${dt}</div>
-    </div>`;
-  }).join('');
-}
-
-
-function initLanding(){
-  const landing = document.getElementById('landing');
-  const app = document.getElementById('app');
-  const btn = document.getElementById('btnOpenLogin');
-  if (btn) btn.addEventListener('click', ()=>{
-    const lm = document.getElementById('loginModal');
-    if (lm) lm.classList.add('open');
-    const card = document.getElementById('loginCard');
-    if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
-  });
-  // 기본: 랜딩 보이기
-  if (landing) landing.style.display='block';
-  if (app) app.style.display='none';
-}
-document.addEventListener('DOMContentLoaded', initLanding);
-
 </script>
 </body>
 </html>
