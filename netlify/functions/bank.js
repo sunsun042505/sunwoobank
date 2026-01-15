@@ -270,11 +270,22 @@ exports.handler = async function handler(event) {
         txs = txData || [];
       }
 
-      return ok({
+      
+
+// 가입 상품(상품가입 메뉴에서 생성된 데이터) - 고객 홈에서 보여주기
+const { data: products, error: productsErr } = await admin
+  .from("product_applications")
+  .select("id, created_at, status, product_type, product_detail, account_id, card_pan_last4")
+  .eq("customer_id", customer.id)
+  .order("created_at", { ascending: false })
+  .limit(50);
+if (productsErr) throw productsErr;
+return ok({
         customer: { customer_no: cust.customer_no, name: cust.name, email: cust.email, phone: cust.phone, address: cust.address },
         accounts: (accounts || []).map(a => ({ account_no: a.account_no, type: a.type, status: a.status, balance: a.balance, flags: a.flags, holds: a.holds })),
         txs
-      });
+        products: products || [],
+});
     }
 
     if (action === "customer.transfer") {
@@ -635,7 +646,7 @@ exports.handler = async function handler(event) {
     }
 
     if (action === "form.submit") {
-      const { token, formType, formData, signatureImage } = payload;
+      const { token, formType, formData, signatureImage, agentSignatureImage } = payload;
       if (!token) return bad(400, "token_required");
 
       const { data: ft, error: e1 } = await admin.from("form_tokens").select("*").eq("token", token).maybeSingle();
@@ -750,6 +761,39 @@ exports.handler = async function handler(event) {
       return ok({ application: row });
     }
 
+
+
+// 텔러: 작성된 서식 조회(아이패드에서 제출한 서식)
+if (action === "teller.forms.list") {
+  const customerId = (payload && payload.customerId) || null;
+  if (!customerId) return bad(400, "missing_customer", { need: "customerId" });
+
+  const limit = Math.min(Number(payload.limit || 30) || 30, 100);
+  const { data: forms, error } = await admin
+    .from("forms")
+    .select("id, created_at, status, form_type, form_data, signature_image")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return ok({ forms: forms || [] });
+}
+
+if (action === "teller.forms.get") {
+  const formId = (payload && payload.formId) || null;
+  if (!formId) return bad(400, "missing_form", { need: "formId" });
+
+  const { data: form, error } = await admin
+    .from("forms")
+    .select("*")
+    .eq("id", formId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!form) return bad(404, "not_found", { formId });
+
+  return ok({ form });
+}
 return bad(400, "unknown_action", { action });
   } catch (err) {
     return bad(500, "server_error", { message: String(err?.message || err) });
