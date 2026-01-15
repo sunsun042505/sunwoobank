@@ -1,44 +1,371 @@
-
 <!doctype html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="utf-8"/>
-<title>SunwooBank</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>선우뱅크 · 고객</title>
 <style>
-body{margin:0;font-family:sans-serif}
-#landing{padding:40px}
-#loginCard,#app{display:none}
-#app{padding:20px}
-.account{border:1px solid #ccc;padding:16px;margin-top:16px}
+:root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--btn:#111827}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;background:rgba(246,247,251,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+h1{font-size:18px;margin:0}
+.small{font-size:12px;color:var(--muted)}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
+.btn{border:0;background:var(--btn);color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer}
+.btn2{border:1px solid var(--line);background:#fff;color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.card h2{font-size:14px;margin:0 0 10px 0}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.note{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+.hidden{display:none}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+
+.landing{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:36px}
+.landing-inner{width:min(980px,100%);}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:18px;opacity:.9}
+.brand .logo{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,#1dd6a8,#5b7cff);box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.brand-title{font-size:16px;font-weight:800}
+.brand-sub{font-size:12px;opacity:.7}
+.hero{padding:22px 0 18px}
+.hero h1{margin:0 0 6px;font-size:44px;letter-spacing:-.5px}
+.hero p{margin:0 0 16px;opacity:.85;line-height:1.5}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.cards .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px}
+.card-title{font-weight:800;margin-bottom:6px}
+.card-desc{opacity:.8;font-size:13px;line-height:1.4}
+@media (max-width:880px){.cards{grid-template-columns:1fr} .hero h1{font-size:36px}}
 </style>
 </head>
 <body>
-<div id="landing">
-  <h1>SunwooBank</h1>
-  <button id="btnLogin">로그인</button>
+<header>
+  <div class="wrap">
+    <div class="row">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>선우뱅크 · 고객</h1>
+          <div class="small">회원가입 없음(초대 전용) · 실제 금융 서비스 아님</div>
+        </div>
+      </div>
+      <div class="row" style="gap:10px">
+        <span id="who" class="badge">로그인 필요</span>
+        <button id="logoutBtn" class="btn2 hidden">로그아웃</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="loginCard" class="card hidden">
+    <h2>로그인</h2>
+    <div class="note">아이디(이메일)/비번은 텔러(창구)에서 발급받아.</div>
+    <div class="hr"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div>
+        <label class="note">이메일</label>
+        <input id="email" class="input" placeholder="you@example.com"/>
+      </div>
+      <div>
+        <label class="note">비밀번호</label>
+        <input id="pw" class="input" type="password" placeholder="••••••••"/>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+    <button id="loginBtn" class="btn" style="width:100%">로그인</button>
+    <div id="loginMsg" class="note" style="margin-top:10px"></div>
+  </div>
+
+  
+<div id="landing" class="landing">
+  <div class="landing-inner">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <div class="brand-title">선우은행</div>
+        <div class="brand-sub">데모 · 실제 금융 서비스 아님</div>
+      </div>
+    </div>
+    <div class="hero">
+      <h1>SunwooBank</h1>
+      <p>계좌조회 · 이체 · 가입상품 · 서식요청(아이패드)까지<br/>Netlify + Functions + Supabase 데모</p>
+      <div class="hero-actions">
+        <button id="btnOpenLogin" class="btn primary">로그인</button>
+        <a class="btn ghost" href="teller/">텔러 화면</a>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">고객</div>
+        <div class="card-desc">로그인 후 계좌/이체/가입상품 확인</div>
+      </div>
+      <div class="card">
+        <div class="card-title">텔러</div>
+        <div class="card-desc">창구 업무 + 아이패드 서식 조회</div>
+      </div>
+      <div class="card">
+        <div class="card-title">아이패드 서식</div>
+        <div class="card-desc">QR로 열고 제출하면 텔러에서 확인</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="app" class="hidden">
+    <div class="grid">
+      <div class="card">
+        <h2>내 계좌</h2>
+        <div id="custInfo" class="note"></div>
+        <div class="hr"></div>
+        <div id="acctList"></div>
+      </div>
+
+      <div class="card">
+        <h2>이체</h2>
+        <div class="note">한도계좌/지급정지/계좌정지 상태면 제한될 수 있어.</div>
+        <div class="hr"></div>
+        <label class="note">출금계좌</label>
+        <select id="fromSel"></select>
+        <div style="height:8px"></div>
+        <label class="note">받는계좌번호</label>
+        <input id="toNo" class="input" placeholder="110-1234-5678"/>
+        <div style="height:8px"></div>
+        <label class="note">금액</label>
+        <input id="amt" class="input" type="number" placeholder="10000"/>
+        <div style="height:8px"></div>
+        <label class="note">메모(선택)</label>
+        <input id="memo" class="input" placeholder="메모"/>
+        <div style="height:12px"></div>
+        <button id="sendBtn" class="btn" style="width:100%">이체하기</button>
+        <div id="msg" class="note" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>최근 거래</h2>
+      <div class="note">최대 30건</div>
+      <div class="hr"></div>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr><th>시간</th><th>유형</th><th>금액</th><th>메모</th></tr></thead>
+          <tbody id="txRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div id="loginCard">
-  <input id="email" placeholder="email"/>
-  <input id="pw" type="password" placeholder="password"/>
-  <button id="doLogin">로그인</button>
-</div>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-<div id="app">
-  <h2>내 계좌</h2>
-  <div class="account">계좌번호 110-8014-3093 / 잔액 50,000원</div>
-</div>
+const who = document.getElementById('who');
+const logoutBtn = document.getElementById('logoutBtn');
+const loginBtn = document.getElementById('loginBtn');
+const loginMsg = document.getElementById('loginMsg');
+const loginCard = document.getElementById('loginCard');
+const landing = document.getElementById('landing');
+const app = document.getElementById('app');
+const custInfo = document.getElementById('custInfo');
+const acctList = document.getElementById('acctList');
+const fromSel = document.getElementById('fromSel');
+const txRows = document.getElementById('txRows');
+const msg = document.getElementById('msg');
 
-<script>
-const landing=document.getElementById('landing');
-const loginCard=document.getElementById('loginCard');
-const app=document.getElementById('app');
-document.getElementById('btnLogin').onclick=()=>{landing.style.display='none';loginCard.style.display='block';};
-document.getElementById('doLogin').onclick=async()=>{
-  landing.style.display='none';
-  loginCard.style.display='none';
-  app.style.display='block';
+function money(n){ return (Number(n)||0).toLocaleString('ko-KR') + '원'; }
+
+async function getConfig(){
+  const r = await fetch('/.netlify/functions/bank?config=1', { cache:'no-store' });
+  const j = await r.json();
+  if(!j.ok) throw new Error('config_load_failed');
+  return j;
+}
+
+const cfg = await getConfig();
+const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+async function bankApi(action, payload){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session) throw new Error('로그인 필요');
+  const r = await fetch('/.netlify/functions/bank', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'authorization':'Bearer ' + session.access_token
+    },
+    body: JSON.stringify({ action, payload })
+  });
+  const j = await r.json().catch(()=>({ok:false,error:'bad_json'}));
+  if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+function setLoggedOut(){
+  who.textContent = '로그인 필요';
+  logoutBtn.classList.add('hidden');
+  if (landing) landing.classList.remove('hidden');
+  loginCard.classList.add('hidden');
+  app.classList.add('hidden');
+}
+
+function setLoggedIn(email){
+  who.textContent = email;
+  logoutBtn.classList.remove('hidden');
+  loginCard.classList.add('hidden');
+  if (landing) landing.classList.add('hidden');
+  app.classList.remove('hidden');
+}
+
+function renderAccounts(accounts){
+  acctList.innerHTML = '';
+  fromSel.innerHTML = '';
+  accounts.forEach(a=>{
+    const flags = a.flags || {};
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.margin = '10px 0';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div>
+          <div style="font-weight:800">${a.account_no}</div>
+          <div class="note">${a.type} · 상태:${a.status}
+            ${flags.limitAccount?' · 한도계좌':''}
+            ${flags.paymentStop?' · 지급정지':''}
+            ${flags.seizure?' · 압류':''}
+            ${flags.provisionalSeizure?' · 가압류':''}
+          </div>
+        </div>
+        <div style="font-weight:900">${money(a.balance)}</div>
+      
+<div class="panel" id="productsPanel" style="display:none">
+  <div class="panel-head">
+    <div class="panel-title">가입한 상품</div>
+    <div class="panel-sub">창구/고객 화면에서 가입한 내역</div>
+  </div>
+  <div id="productsList" class="list"></div>
+</div>
+</div>`;
+    acctList.appendChild(div);
+
+    const opt = document.createElement('option');
+    opt.value = a.account_no;
+    opt.textContent = `${a.account_no} (${money(a.balance)})`;
+    fromSel.appendChild(opt);
+  });
+}
+
+function renderTx(txs){
+  txRows.innerHTML='';
+  txs.forEach(tx=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(tx.created_at).toLocaleString()}</td><td>${tx.kind}</td><td>${money(tx.amount)}</td><td>${tx.memo||''}</td>`;
+    txRows.appendChild(tr);
+  });
+}
+
+async function bootstrap(){
+  msg.textContent = '';
+  const j = await bankApi('customer.bootstrap', {});
+  custInfo.textContent = `고객번호: ${j.customer.customer_no} · ${j.customer.name}`;
+  renderAccounts(j.accounts || []);
+  renderTx(j.txs || []);
+  renderProducts(j.products || []);
+  document.getElementById('landing')?.classList.add('hidden');
+  document.getElementById('app')?.classList.remove('hidden');
+}
+
+loginBtn.onclick = async ()=>{
+  loginMsg.textContent = '';
+  try{
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('pw').value;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    setLoggedIn(data.user.email);
+    await bootstrap();
+  }catch(e){
+    loginMsg.textContent = '로그인 실패: ' + (e.message || e);
+  }
 };
+
+logoutBtn.onclick = async ()=>{
+  await supabase.auth.signOut();
+  setLoggedOut();
+};
+
+document.getElementById('sendBtn').onclick = async ()=>{
+  msg.textContent = '';
+  try{
+    const fromAccountNo = fromSel.value;
+    const toAccountNo = document.getElementById('toNo').value.trim();
+    const amount = Number(document.getElementById('amt').value);
+    const memo = document.getElementById('memo').value.trim();
+    await bankApi('customer.transfer', { fromAccountNo, toAccountNo, amount, memo });
+    msg.textContent = '이체 완료';
+    await bootstrap();
+  }catch(e){
+    msg.textContent = '이체 실패: ' + (e.message || e);
+  }
+};
+
+const { data: { session } } = await supabase.auth.getSession();
+if(session){
+  setLoggedIn(session.user.email);
+  await bootstrap();
+}else{
+  setLoggedOut();
+}
+
+function renderProducts(products){
+  const panel = document.getElementById('productsPanel');
+  const list = document.getElementById('productsList');
+  if (!panel || !list) return;
+  const items = Array.isArray(products) ? products : [];
+  if (!items.length){
+    panel.style.display = 'block';
+    list.innerHTML = '<div class="empty">가입한 상품이 없습니다.</div>';
+    return;
+  }
+  panel.style.display = 'block';
+  list.innerHTML = items.map(p=>{
+    const dt = new Date(p.created_at).toLocaleString('ko-KR');
+    const type = (p.product_type || '').toUpperCase();
+    const detail = p.product_detail || '';
+    const status = p.status || 'submitted';
+    const last4 = p.card_pan_last4 ? (' · **** ' + p.card_pan_last4) : '';
+    return `<div class="row">
+      <div class="row-main">
+        <div class="row-title">${type} <span class="badge">${status}</span></div>
+        <div class="row-sub">${detail}${last4}</div>
+      </div>
+      <div class="row-side">${dt}</div>
+    </div>`;
+  }).join('');
+}
+
+
+function initLanding(){
+  const landing = document.getElementById('landing');
+  const app = document.getElementById('app');
+  const btn = document.getElementById('btnOpenLogin');
+  if (btn) btn.addEventListener('click', ()=>{
+    const lm = document.getElementById('loginModal');
+    if (lm) lm.classList.add('open');
+    const card = document.getElementById('loginCard');
+    if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  // 기본: 랜딩 보이기
+  if (landing) landing.style.display='block';
+  if (app) app.style.display='none';
+}
+document.addEventListener('DOMContentLoaded', initLanding);
 </script>
 </body>
 </html>

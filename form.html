@@ -1,32 +1,402 @@
-
 <!doctype html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="utf-8"/>
-<title>서식</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>서식 작성 · 선우뱅크</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--btn:#111827;--ok:#16a34a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif;background:var(--bg);color:var(--text)}
+header{position:sticky;top:0;background:rgba(246,247,251,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+h1{font-size:18px;margin:0}
+.small{font-size:12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:14px}
+.card h2{font-size:14px;margin:0 0 10px 0}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.btn{border:0;background:var(--btn);color:#fff;padding:12px 14px;border-radius:14px;cursor:pointer}
+.btn2{border:1px solid var(--line);background:#fff;color:var(--text);padding:12px 14px;border-radius:14px;cursor:pointer}
+.note{font-size:12px;color:var(--muted)}
+.badge{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
+.sigWrap{border:1px dashed #cbd5e1;border-radius:16px;padding:10px;background:#fff}
+canvas{width:100%;height:220px;border-radius:12px;background:#f8fafc;touch-action:none}
+.hidden{display:none}
+.done{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:50px 16px}
+.done .check{width:54px;height:54px;border-radius:999px;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.25);display:flex;align-items:center;justify-content:center;color:var(--ok);font-weight:900;font-size:26px}
+
+.seg{display:flex;gap:8px}
+.seg-btn{flex:1;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);padding:10px 12px;color:#fff;cursor:pointer}
+.seg-btn.active{background:linear-gradient(135deg,rgba(29,214,168,.25),rgba(91,124,255,.18));border-color:rgba(29,214,168,.35)}
+canvas.sig{width:100%;height:140px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);background:rgba(0,0,0,.18)}
+.sig-actions{margin-top:8px;display:flex;gap:8px}
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (max-width:760px){.row{grid-template-columns:1fr}}
+
+</style>
 </head>
 <body>
-<h2>서식 요청</h2>
-<select id="type">
-  <option value="">선택</option>
-  <option value="product">상품가입</option>
-  <option value="ebank">전자뱅킹 제신고</option>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>서식 작성</h1>
+        <div class="small">토큰 유효 10분 · 제출하면 자동 만료</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="loading" class="card">
+    <h2>불러오는 중…</h2>
+    <div class="note" id="loadMsg">잠시만</div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="card">
+      <h2>기본 정보</h2>
+      <div class="row">
+        <span class="badge" id="bName">이름: -</span>
+        <span class="badge" id="bAcc">계좌: -</span>
+        <span class="badge" id="bType">서식: -</span>
+      </div>
+      <div class="hr"></div>
+      <label class="note">요청 유형</label>
+      <select id="formType" class="input">
+  <!-- 기존 -->
+  <option value="info_change">정보변경 신청</option>
+  <option value="pw_change">계좌비밀번호 변경 신청</option>
+  <option value="lost_report">분실신고</option>
+  <option value="limit_release">한도계좌 해제 신청</option>
+  <option value="stop_release">지급정지 해제 요청</option>
+  <!-- 추가 -->
+  <option value="product">상품 가입</option>
+  <option value="ebanking">전자뱅킹 제신고</option>
   <option value="deposit">입금</option>
   <option value="withdraw">출금</option>
+  <option value="other">기타</option>
 </select>
 
-<div id="fields"></div>
+<div id="dynamicFields" class="grid"></div>
+      <div style="height:10px"></div>
+      <label class="note">상세</label>
+      <textarea id="detail" placeholder="요청 내용을 적어줘"></textarea>
+    </div>
 
-<h3>본인 서명</h3>
-<canvas id="sigSelf" width="300" height="120" style="border:1px solid #000"></canvas>
+    
+<div class="row" style="margin-top:10px">
+  <div class="field">
+    <label>고객 성명</label>
+    <input id="selfName" placeholder="본인 이름" readonly />
+    <div class="hint">본인 이름은 고객 정보로 자동 입력됩니다.</div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:10px">
+  <div class="field">
+    <label>신청자</label>
+    <div class="seg">
+      <button type="button" class="seg-btn active" data-applicant="self" id="btnSelf">본인</button>
+      <button type="button" class="seg-btn" data-applicant="agent" id="btnAgent">의 대리인</button>
+    </div>
+    <div class="hint">본인/대리인 선택에 따라 서명칸이 바뀝니다.</div>
+  </div>
+</div>
+
+<div id="selfBlock" class="row">
+  <div class="field" style="grid-column:1 / -1">
+    <label>본인 서명</label>
+    <canvas id="sigSelf" class="sig"></canvas>
+    <div class="sig-actions">
+      <button type="button" class="btn ghost" id="clearSelfSig">지우기</button>
+    </div>
+  </div>
+</div>
+
+<div id="agentBlock" class="row" style="display:none">
+  <div class="field">
+    <label>대리인 성명</label>
+    <input id="agentName" placeholder="대리인 이름 (예: 이OO)" />
+  </div>
+  <div class="field">
+    <label>문구</label>
+    <input id="agentText" readonly />
+    <div class="hint">예: 이선우의 대리인 이OO</div>
+  </div>
+  <div class="field" style="grid-column:1 / -1">
+    <label id="agentSigLabel">대리인 서명</label>
+    <canvas id="sigAgent" class="sig"></canvas>
+    <div class="sig-actions">
+      <button type="button" class="btn ghost" id="clearAgentSig">지우기</button>
+    </div>
+  </div>
+</div>
+<div style="height:12px"></div>
+      <button id="submit" class="btn" style="width:100%">저장(제출)</button>
+      <div id="msg" class="note" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="done" class="card hidden">
+    <div class="done">
+      <div class="check">✓</div>
+      <div style="font-weight:900;font-size:18px">서식 작성이 완료되었습니다.</div>
+      <div class="note">이 화면은 닫아도 돼.</div>
+      <button class="btn2" onclick="window.close()">닫기</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
-const fields=document.getElementById('fields');
-document.getElementById('type').onchange=e=>{
-  fields.innerHTML='';
-  if(e.target.value==='product') fields.innerHTML='<input placeholder="가입할 상품"/>';
-  if(e.target.value==='deposit'||e.target.value==='withdraw') fields.innerHTML='<input placeholder="금액"/>';
-};
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const token = qs.get("token") || "";
+  const loading = $("loading");
+  const app = $("app");
+  const done = $("done");
+  const msg = $("msg");
+
+  const bName = $("bName"), bAcc = $("bAcc"), bType = $("bType");
+
+  const formTypeEl = $("formType");
+  const dyn = $("dynamicFields");
+  const detailEl = $("detail");
+
+  const selfNameEl = $("selfName");
+  const agentNameEl = $("agentName");
+  const agentTextEl = $("agentText");
+  const agentSigLabel = $("agentSigLabel");
+
+  const btnSelf = $("btnSelf");
+  const btnAgent = $("btnAgent");
+  const selfBlock = $("selfBlock");
+  const agentBlock = $("agentBlock");
+
+  const submitBtn = $("submit");
+
+  let applicant = "self";
+  let loadedFormType = "창구 서식";
+
+  async function callBank(action, payload){
+    const res = await fetch("/.netlify/functions/bank", {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ action, payload })
+    });
+    const js = await res.json().catch(()=>({}));
+    if(!res.ok || js.ok === false){
+      throw new Error((js && js.error) || ("HTTP " + res.status));
+    }
+    return js;
+  }
+
+  function show(el){ if(el) el.classList.remove("hidden"); }
+  function hide(el){ if(el) el.classList.add("hidden"); }
+
+  function setApplicant(v){
+    applicant = v;
+    if(btnSelf) btnSelf.classList.toggle("active", v==="self");
+    if(btnAgent) btnAgent.classList.toggle("active", v==="agent");
+    if(selfBlock) selfBlock.style.display = (v==="self") ? "" : "none";
+    if(agentBlock) agentBlock.style.display = (v==="agent") ? "" : "none";
+    syncAgentText();
+  }
+
+  function syncAgentText(){
+    const s = (selfNameEl?.value || "").trim();
+    const a = (agentNameEl?.value || "").trim();
+    const t = `${s || "___"}의 대리인 ${a || "___"}`;
+    if(agentTextEl) agentTextEl.value = t;
+    if(agentSigLabel) agentSigLabel.textContent = `${t} 서명`;
+  }
+
+  function setDyn(){
+    if(!dyn || !formTypeEl) return;
+    const v = formTypeEl.value;
+    let html = "";
+    if(v === "deposit" || v === "withdraw"){
+      html += `<div class="field"><label>금액</label><input id="amt" type="number" inputmode="numeric" placeholder="금액" /></div>`;
+    }
+    if(v === "product"){
+      html += `<div class="field" style="grid-column:1 / -1"><label>가입할 상품</label><input id="prodName" placeholder="예: 정기적금 / 체크카드 / 펀드" /></div>`;
+    }
+    if(v === "ebanking"){
+      html += `<div class="field" style="grid-column:1 / -1"><label>전자뱅킹 제신고 내용</label><input id="ebType" placeholder="예: 인터넷뱅킹/OTP/보안카드/이체한도" /></div>`;
+    }
+    dyn.innerHTML = html;
+  }
+
+  function setupSig(canvasId, clearBtnId){
+    const c = $(canvasId);
+    const btn = $(clearBtnId);
+    if(!c) return { get: ()=>null, clear: ()=>{} };
+    const ctx = c.getContext("2d");
+
+    function resize(){
+      const rect = c.getBoundingClientRect();
+      // high DPI
+      c.width = Math.max(600, Math.floor(rect.width*2));
+      c.height = Math.max(220, Math.floor(rect.height*2));
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(15,23,42,.92)"; // dark ink on light bg
+      ctx.clearRect(0,0,c.width,c.height);
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    let drawing=false, last=null;
+    function pos(e){
+      const r=c.getBoundingClientRect();
+      const p=(e.touches && e.touches[0]) ? e.touches[0] : e;
+      const x=(p.clientX - r.left) * (c.width / r.width);
+      const y=(p.clientY - r.top) * (c.height / r.height);
+      return {x,y};
+    }
+    function down(e){ drawing=true; last=pos(e); e.preventDefault(); }
+    function move(e){
+      if(!drawing) return;
+      const p=pos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x,last.y);
+      ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+      last=p;
+      e.preventDefault();
+    }
+    function up(){ drawing=false; last=null; }
+
+    c.addEventListener("pointerdown", down);
+    c.addEventListener("pointermove", move);
+    c.addEventListener("pointerup", up);
+    c.addEventListener("pointercancel", up);
+    c.addEventListener("touchstart", down, {passive:false});
+    c.addEventListener("touchmove", move, {passive:false});
+    c.addEventListener("touchend", up);
+
+    function clear(){ ctx.clearRect(0,0,c.width,c.height); }
+    if(btn) btn.addEventListener("click", clear);
+
+    function get(){
+      // detect empty by sampling alpha
+      const img = ctx.getImageData(0,0,c.width,c.height).data;
+      let nonEmpty = 0;
+      for(let i=3;i<img.length;i+=16){
+        if(img[i] > 0){ nonEmpty++; if(nonEmpty>10) break; }
+      }
+      if(nonEmpty<=10) return null;
+      return c.toDataURL("image/png");
+    }
+    return { get, clear };
+  }
+
+  const sigSelf = setupSig("sigSelf","clearSelfSig");
+  const sigAgent = setupSig("sigAgent","clearAgentSig");
+
+  async function init(){
+    if(!token){
+      if(msg) msg.textContent = "토큰이 없어서 열 수 없음 (텔러에서 QR을 다시 열어주세요)";
+      hide(loading); show(app);
+      return;
+    }
+    try{
+      const j = await callBank("form.get", { token });
+      loadedFormType = j?.form_type || "창구 서식";
+      const cname = j?.customer?.name || "";
+      const acc = j?.account?.account_no || "-";
+      if(bName) bName.textContent = "이름: " + (cname || "-");
+      if(bAcc) bAcc.textContent = "계좌: " + acc;
+      if(bType) bType.textContent = "서식: " + loadedFormType;
+      if(selfNameEl){
+        selfNameEl.value = cname;
+        selfNameEl.readOnly = true;
+      }
+      syncAgentText();
+    }catch(e){
+      if(msg) msg.textContent = "불러오기 실패: " + (e.message || e);
+    }finally{
+      hide(loading); show(app);
+    }
+  }
+
+  async function onSubmit(){
+    if(msg) msg.textContent = "";
+    const typeCode = formTypeEl ? formTypeEl.value : "other";
+    const typeLabel = formTypeEl ? (formTypeEl.options[formTypeEl.selectedIndex]?.text || "") : "";
+    const detail = (detailEl?.value || "").trim();
+
+    // dynamic field data
+    const fd = {};
+    if(typeCode === "deposit" || typeCode === "withdraw"){
+      fd.amount = Number($("amt")?.value || 0) || 0;
+    }
+    if(typeCode === "product"){
+      fd.product = ($("prodName")?.value || "").trim();
+    }
+    if(typeCode === "ebanking"){
+      fd.ebanking = ($("ebType")?.value || "").trim();
+    }
+
+    const baseData = {
+      requestType: typeLabel,
+      requestCode: typeCode,
+      detail,
+      applicantType: applicant,
+      selfName: (selfNameEl?.value || "").trim(),
+      agentName: (agentNameEl?.value || "").trim(),
+      agentText: (agentTextEl?.value || "").trim(),
+      ...fd
+    };
+
+    // choose signature based on applicant
+    const signatureImage = (applicant === "self") ? sigSelf.get() : sigAgent.get();
+    if(!signatureImage){
+      if(applicant === "self") return alert("본인 서명을 해주세요.");
+      return alert("대리인 서명을 해주세요.");
+    }
+    if(applicant === "agent" && !baseData.agentName){
+      return alert("대리인 성명을 입력해주세요.");
+    }
+
+    try{
+      await callBank("form.submit", {
+        token,
+        formType: loadedFormType,
+        formData: baseData,
+        signatureImage
+      });
+      hide(app); show(done);
+    }catch(e){
+      if(msg) msg.textContent = "저장 실패: " + (e.message || e);
+    }
+  }
+
+  // events
+  if(formTypeEl){
+    formTypeEl.addEventListener("change", setDyn);
+  }
+  if(agentNameEl){
+    agentNameEl.addEventListener("input", syncAgentText);
+  }
+  if(btnSelf) btnSelf.addEventListener("click", ()=>setApplicant("self"));
+  if(btnAgent) btnAgent.addEventListener("click", ()=>setApplicant("agent"));
+  if(submitBtn) submitBtn.addEventListener("click", onSubmit);
+
+  setApplicant("self");
+  setDyn();
+  init();
+})();
 </script>
+
 </body>
 </html>
