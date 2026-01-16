@@ -352,22 +352,23 @@ function renderProducts(products){
 
 
 function initLanding(){
-  const landing = document.getElementById('landing');
-  const app = document.getElementById('app');
-  const btn = document.getElementById('btnOpenLogin');
-if (btn) btn.addEventListener('click', (e)=>{
-  e.preventDefault();
-  const card = document.getElementById('loginCard');
-  if (card) {
-    card.classList.remove('hidden');
-    card.scrollIntoView({behavior:'smooth', block:'center'});
-    document.getElementById('email')?.focus();
-  }
-});
-});
+  var landing = document.getElementById('landing');
+  var app = document.getElementById('app');
+  var btn = document.getElementById('btnOpenLogin');
+  if (btn) btn.addEventListener('click', function(e){
+    e.preventDefault();
+    var card = document.getElementById('loginCard');
+    if (card) {
+      card.classList.remove('hidden');
+      try { card.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_e) {}
+      var em = document.getElementById('email');
+      if (em) em.focus();
+    }
+  });
+
   // 기본: 랜딩 보이기
-  if (landing) landing.style.display='block';
-  if (app) app.style.display='none';
+  if (landing) landing.style.display = 'block';
+  if (app) app.style.display = 'none';
 }
 document.addEventListener('DOMContentLoaded', initLanding);
 </script>

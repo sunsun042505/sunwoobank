@@ -178,6 +178,10 @@ canvas.sig{width:100%;height:140px;border-radius:14px;border:1px dashed rgba(255
 
   const btnSelf = $("btnSelf");
   const btnAgent = $("btnAgent");
+// onclick fallback (일부 환경에서 addEventListener가 먹통인 경우 대비)
+if (btnSelf) btnSelf.onclick = function(e){ if(e) e.preventDefault(); setApplicant("self"); return false; };
+if (btnAgent) btnAgent.onclick = function(e){ if(e) e.preventDefault(); setApplicant("agent"); return false; };
+
 // seg 버튼 클릭이 환경에 따라 먹통되는 경우를 대비해 이벤트 위임을 추가
 const seg = document.querySelector('.seg');
 if (seg) {
@@ -224,8 +228,8 @@ if (seg) {
   }
 
   function syncAgentText(){
-    const s = (selfNameEl?.value || "").trim();
-    const a = (agentNameEl?.value || "").trim();
+    const s = ((selfNameEl && selfNameEl.value) || "").trim();
+    const a = ((agentNameEl && agentNameEl.value) || "").trim();
     const t = `${s || "___"}의 대리인 ${a || "___"}`;
     if(agentTextEl) agentTextEl.value = t;
     if(agentSigLabel) agentSigLabel.textContent = `${t} 서명`;
@@ -323,9 +327,9 @@ if (seg) {
     }
     try{
       const j = await callBank("form.get", { token });
-      loadedFormType = j?.form_type || "창구 서식";
-      const cname = j?.customer?.name || "";
-      const acc = j?.account?.account_no || "-";
+      loadedFormType = (j && j.form_type) || "창구 서식";
+      const cname = (j && j.customer && j.customer.name) || "";
+      const acc = (j && j.account && j.account.account_no) || "-";
       if(bName) bName.textContent = "이름: " + (cname || "-");
       if(bAcc) bAcc.textContent = "계좌: " + acc;
       if(bType) bType.textContent = "서식: " + loadedFormType;
@@ -344,8 +348,8 @@ if (seg) {
   async function onSubmit(){
     if(msg) msg.textContent = "";
     const typeCode = formTypeEl ? formTypeEl.value : "other";
-    const typeLabel = formTypeEl ? (formTypeEl.options[formTypeEl.selectedIndex]?.text || "") : "";
-    const detail = (detailEl?.value || "").trim();
+    const typeLabel = formTypeEl ? (((formTypeEl && formTypeEl.options && formTypeEl.options[formTypeEl.selectedIndex]) ? formTypeEl.options[formTypeEl.selectedIndex].text : \"\") || "") : "";
+    const detail = ((detailEl && detailEl.value) || "").trim();
 
     // dynamic field data
     const fd = {};
@@ -364,9 +368,9 @@ if (seg) {
       requestCode: typeCode,
       detail,
       applicantType: applicant,
-      selfName: (selfNameEl?.value || "").trim(),
-      agentName: (agentNameEl?.value || "").trim(),
-      agentText: (agentTextEl?.value || "").trim(),
+      selfName: ((selfNameEl && selfNameEl.value) || "").trim(),
+      agentName: ((agentNameEl && agentNameEl.value) || "").trim(),
+      agentText: ((agentTextEl && agentTextEl.value) || "").trim(),
       ...fd
     };
 
@@ -400,8 +404,8 @@ if (seg) {
   if(agentNameEl){
     agentNameEl.addEventListener("input", syncAgentText);
   }
-  if(btnSelf) btnSelf.addEventListener("click",(e)=>{e.preventDefault();setApplicant("self");});
-if(btnAgent) btnAgent.addEventListener("click",(e)=>{e.preventDefault();setApplicant("agent");});
+  if(btnSelf) btnSelf.addEventListener("click",function(e){ if(e) e.preventDefault(); setApplicant("self"); });
+if(btnAgent) btnAgent.addEventListener("click",function(e){ if(e) e.preventDefault(); setApplicant("agent"); });
 if(submitBtn) submitBtn.addEventListener("click", onSubmit);
 
   setApplicant("self");

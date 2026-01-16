@@ -47,6 +47,13 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .card2{border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.35);border-radius:18px;padding:12px}
 @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.hidden{display:none !important}
+.modalBox{width:min(920px,100%);max-height:85vh;overflow:auto;background:#0b1224;border:1px solid var(--line);border-radius:16px;padding:16px}
+.formRow{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);cursor:pointer;margin-top:8px}
+.formRow:hover{background:rgba(255,255,255,.06)}
+.sigImg{max-width:100%;border:1px solid var(--line);border-radius:12px;background:#fff}
+.pre{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--text);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:12px}
 </style>
 </head>
 <body>
@@ -116,6 +123,17 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
             <div class="badge" id="selInfo" style="margin-top:8px;width:100%;display:block">없음</div>
             <div style="height:10px"></div>
             <button id="openFormQR" class="btn ok" style="width:100%">아이패드 서식 QR 열기(10분)</button>
+<div style="height:10px"></div>
+<button id="openForms" class="btn" style="width:100%">작성된 서식 보기</button>
+<div id="formsPanel" class="card hidden" style="margin-top:10px;padding:12px">
+  <div class="row" style="justify-content:space-between;gap:10px">
+    <div class="note">작성된 서식</div>
+    <button id="formsRefresh" class="btn">조회</button>
+  </div>
+  <div class="note" style="margin-top:6px">고객 선택 후 조회하면 최근 제출된 서식이 보여요.</div>
+  <div id="formsList" style="margin-top:10px"></div>
+</div>
+
             <div class="note" style="margin-top:8px">고객 선택 후 눌러서 QR을 아이패드로 스캔</div>
           </div>
         </div>
@@ -408,41 +426,13 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
       </div>
 
       
-      
-<div id="tab-prod" class="hidden">
-  <h2>상품가입</h2>
-  <div class="note">고객 선택 없이도 화면은 열려요. 단, <b>가입 처리</b>는 고객을 선택해야 진행됩니다.</div>
-  <div class="hr"></div>
-
-  <div class="grid2">
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <div style="font-weight:900">선택 고객</div>
-        <div id="prodSelectedBadge" class="pill">없음</div>
+      <div id="tab-prod" class="hidden">
+        <h2>상품가입</h2>
+        <div class="note">선택 고객 기준으로 상품 가입을 처리해. (예적금/대출/투자/카드/보험)</div>
+        <div class="hr"></div>
+        <div id="prodBox"></div>
+        <div id="prodMsg" class="note" style="margin-top:10px"></div>
       </div>
-      <div class="hr"></div>
-      <div class="note">상단 검색으로 고객을 선택하면 자동으로 반영돼요.</div>
-      <div class="note" style="margin-top:6px">고객 선택 없이 <b>가입 처리</b> 누르면 “고객 선택” 안내가 뜹니다.</div>
-    </div>
-
-    <div class="card">
-      <div style="font-weight:900">상품 카테고리</div>
-      <div class="hr"></div>
-      <select id="prodCat" class="input">
-        <option value="예적금">예적금</option>
-        <option value="대출">대출</option>
-        <option value="투자">투자</option>
-        <option value="카드">카드</option>
-        <option value="보험">보험</option>
-      </select>
-      <div style="height:10px"></div>
-      <div id="prodForm"></div>
-      <div style="height:12px"></div>
-      <button id="prodApplyBtn" class="btn ok" style="width:100%">가입 처리</button>
-      <div id="prodMsg" class="note" style="margin-top:10px"></div>
-    </div>
-  </div>
-</div>
 
 <div id="tab-enroll" class="hidden">
         <h2>인터넷뱅킹 가입(계정 생성, invite-only)</h2>
@@ -500,7 +490,370 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js">
 
 // ---------- 상품가입 ----------
+function renderProducts(){
+  const box = document.getElementById('prodBox');
+  const msg = document.getElementById('prodMsg');
+  if(!box) return;
+  if(msg) msg.textContent = '';
 
+  const cust = selectedCustomer || null;
+  const accList = (selectedDetail && selectedDetail.accounts) ? selectedDetail.accounts : [];
+  const firstAcc = accList[0] ? accList[0].account_no : '';
+
+  box.innerHTML = `
+    <div class="grid2">
+      <div class="card2">
+        <div style="font-weight:900;margin-bottom:8px">대상 고객</div>
+        ${cust ? `
+          <div class="note">선택 고객이 자동 적용됨</div>
+          <div style="margin-top:8px" class="note">
+            <b>${escapeHtml(cust.name)}</b> · ${escapeHtml(cust.phone||'-')} · ${escapeHtml(cust.email||'-')}
+          </div>
+        ` : `
+          <div class="note">고객을 선택하지 않아도 가입 가능. 아래 정보로 신규 고객 생성 후 처리됨.</div>
+          <div style="height:10px"></div>
+          <div class="row">
+            <div style="flex:1">
+              <div class="note">이름</div>
+              <input id="pCustName" class="input" placeholder="예: 이선우" />
+            </div>
+            <div style="flex:1">
+              <div class="note">전화번호</div>
+              <input id="pCustPhone" class="input" placeholder="예: 010-0000-0000" />
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="row">
+            <div style="flex:1">
+              <div class="note">이메일</div>
+              <input id="pCustEmail" class="input" placeholder="you@example.com" />
+            </div>
+            <div style="flex:1">
+              <div class="note">식별번호(13자리, 데모)</div>
+              <input id="pCustRRN" class="input" inputmode="numeric" placeholder="예: 9001011234567" />
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="note">⚠️ 실제 주민등록번호 입력 금지. 데모용 가짜 숫자만.</div>
+        `}
+        <div style="height:12px"></div>
+        <div class="note">연동 계좌(선택)</div>
+        <div class="row">
+          <input id="pAccountNo" class="input" style="flex:1" value="${escapeHtml(firstAcc||'')}" placeholder="계좌번호 (비우면 미연동)" />
+          <label style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+            <input id="pAutoCreateAcc" type="checkbox" ${cust && firstAcc ? '' : 'checked'} />
+            <span class="note">계좌 자동생성</span>
+          </label>
+        </div>
+        <div style="height:10px"></div>
+        <div class="row">
+          <input id="pAccPin" class="input" style="flex:1" placeholder="계좌 비밀번호(4자리+ · 자동생성 시 필요)" inputmode="numeric" />
+          <input id="pAccInit" class="input" style="flex:1" placeholder="초기 잔액(원 · 선택)" type="number" min="0" />
+        </div>
+      </div>
+
+      <div class="card2">
+        <div style="font-weight:900;margin-bottom:8px">상품 가입</div>
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">카테고리</div>
+            <select id="prodCategory" class="input">
+              <option>예적금</option>
+              <option>대출</option>
+              <option>투자</option>
+              <option>카드</option>
+              <option>보험</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div class="note">세부 상품</div>
+            <select id="pType" class="input"></select>
+          </div>
+        </div>
+        <div style="height:10px"></div>
+        <div id="pFields"></div>
+        <div style="height:10px"></div>
+        <button id="pApply" class="btn ok" style="width:100%">가입 처리</button>
+        <div class="note" id="pHint" style="margin-top:10px;opacity:.9"></div>
+      </div>
+    </div>
+  `;
+
+  const categorySel = document.getElementById('prodCategory');
+  const typeSel = document.getElementById('pType');
+  const fields = document.getElementById('pFields');
+  const applyBtn = document.getElementById('pApply');
+  const hint = document.getElementById('pHint');
+
+  function setTypeOptions(){
+    if(!categorySel || !typeSel) return;
+    const c = categorySel.value;
+    const opts = [];
+    if(c==='예적금'){ opts.push('정기적금','자유적금','주택청약'); }
+    if(c==='대출'){ opts.push('일반대출'); }
+    if(c==='투자'){ opts.push('펀드'); }
+    if(c==='카드'){ opts.push('체크카드','신용카드'); }
+    if(c==='보험'){ opts.push('보험'); }
+    typeSel.innerHTML = opts.map(o=>`<option>${o}</option>`).join('');
+    renderFields();
+  }
+
+  function renderFields(){
+    if(!fields || !categorySel || !typeSel) return;
+    const c = categorySel.value;
+    const t = typeSel.value;
+
+    if(c==='예적금'){
+      fields.innerHTML = `
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">가입 금액(원)</div>
+            <input id="pAmount" class="input" type="number" min="0" placeholder="예: 100000" />
+          </div>
+          <div style="flex:1">
+            <div class="note">기간(개월)</div>
+            <input id="pTerm" class="input" type="number" min="1" placeholder="예: 12" />
+          </div>
+        </div>
+        <div style="height:8px"></div>
+        <div class="note">주택청약 선택 시 만기는 자동으로 9999년으로 처리됨</div>
+      `;
+      if(hint) hint.textContent = '예적금: 금액/기간 입력 후 가입 처리.';
+      return;
+    }
+
+    if(c==='대출'){
+      fields.innerHTML = `
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">대출 금액(원)</div>
+            <input id="pLoanAmt" class="input" type="number" min="0" placeholder="예: 5000000" />
+          </div>
+          <div style="flex:1">
+            <div class="note">이자율</div>
+            <input class="input" value="고정 4%" disabled />
+          </div>
+        </div>
+      `;
+      if(hint) hint.textContent = '대출: 금액 입력. 이자율은 고정 4%.';
+      return;
+    }
+
+    if(c==='투자'){
+      fields.innerHTML = `
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">펀드 상품명</div>
+            <input id="pFundName" class="input" placeholder="예: 선우 성장형 펀드" />
+          </div>
+          <div style="flex:1">
+            <div class="note">투자 금액(원)</div>
+            <input id="pFundAmt" class="input" type="number" min="0" placeholder="예: 200000" />
+          </div>
+        </div>
+      `;
+      if(hint) hint.textContent = '투자: 펀드 상품 + 금액 입력.';
+      return;
+    }
+
+    if(c==='카드'){
+      fields.innerHTML = `
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">카드 종류</div>
+            <select id="pCardType" class="input">
+              <option>체크카드</option>
+              <option>신용카드</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div class="note">카드 비밀번호</div>
+            <input id="pCardPin" class="input" inputmode="numeric" placeholder="예: 1234" />
+          </div>
+        </div>
+        <div style="height:10px"></div>
+        <div id="pCreditBlock" class="card2" style="padding:12px;border:1px solid rgba(255,255,255,.06)">
+          <div style="font-weight:900;margin-bottom:6px">신용카드 옵션</div>
+          <div class="row">
+            <div style="flex:1">
+              <div class="note">한도(원)</div>
+              <input id="pCreditLimit" class="input" type="number" min="0" placeholder="예: 3000000" />
+            </div>
+            <div style="flex:1">
+              <div class="note">신용정보 동의</div>
+              <button id="pAgree" class="btn2" style="width:100%">동의 버튼</button>
+              <div class="note" id="pAgreeState" style="margin-top:6px;opacity:.9">미동의</div>
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="row">
+            <div style="flex:1">
+              <div class="note">해외겸용/국내전용</div>
+              <select id="pNetworkType" class="input">
+                <option value="DOMESTIC">국내전용</option>
+                <option value="INTL">해외겸용</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <div class="note">브랜드(해외겸용)</div>
+              <select id="pNetworkBrand" class="input">
+                <option value="VISA">VISA</option>
+                <option value="MASTER">MASTER</option>
+              </select>
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          <div class="note">배송지</div>
+          <input id="pShip" class="input" placeholder="예: 경기 의왕시 ..." />
+        </div>
+      `;
+      const cardTypeSel = document.getElementById('pCardType');
+      const creditBlock = document.getElementById('pCreditBlock');
+      function toggleCredit(){
+        const isCredit = cardTypeSel && cardTypeSel.value==='신용카드';
+        if(creditBlock) creditBlock.style.display = isCredit ? 'block' : 'none';
+      }
+      if(cardTypeSel) cardTypeSel.onchange = toggleCredit;
+      toggleCredit();
+
+      const agreeBtn = document.getElementById('pAgree');
+      if(agreeBtn){
+        window.__creditAgree = false;
+        agreeBtn.onclick = ()=>{ window.__creditAgree = true; document.getElementById('pAgreeState').textContent='동의 완료'; };
+      }
+      if(hint) hint.textContent = '카드: 국내전용 BIN 9496 / VISA 4816 / MASTER 5927로 발급.';
+      return;
+    }
+
+    if(c==='보험'){
+      fields.innerHTML = `
+        <div class="row">
+          <div style="flex:1">
+            <div class="note">보험 상품명</div>
+            <input id="pInsName" class="input" placeholder="예: 선우 안심보험" />
+          </div>
+          <div style="flex:1">
+            <div class="note">월 보험료(원)</div>
+            <input id="pInsPremium" class="input" type="number" min="0" placeholder="예: 25000" />
+          </div>
+        </div>
+      `;
+      if(hint) hint.textContent = '보험: 상품명/보험료 입력.';
+      return;
+    }
+  }
+
+  async function ensureCustomer(){
+    if(selectedCustomer) return selectedCustomer.id;
+    const name = (document.getElementById('pCustName')?.value||'').trim();
+    const phone = (document.getElementById('pCustPhone')?.value||'').trim();
+    const email = (document.getElementById('pCustEmail')?.value||'').trim();
+    const rrn = (document.getElementById('pCustRRN')?.value||'').replace(/[^0-9]/g,'');
+    if(!name) throw new Error('이름 입력');
+    if(rrn.length!==13) throw new Error('식별번호 13자리(데모) 입력');
+    const j = await api('teller.createCustomer', { name, rrn, phone, email, address: '' });
+    // select it in UI
+    selectedCustomer = j.customer;
+    await refreshSelected();
+    return j.customer.id;
+  }
+
+  async function ensureAccount(customerId){
+    const auto = document.getElementById('pAutoCreateAcc')?.checked;
+    const accNoInput = (document.getElementById('pAccountNo')?.value||'').trim();
+    if(accNoInput) return accNoInput;
+
+    if(!auto) return null;
+
+    const pin = (document.getElementById('pAccPin')?.value||'').trim();
+    if(pin.length<4) throw new Error('계좌 자동생성: 계좌 비밀번호 4자리+ 입력');
+    const init = Number(document.getElementById('pAccInit')?.value||0);
+    const j = await api('teller.createAccount', { customerId, type: '입출금', initialBalance: init, accountPin: pin });
+    await refreshSelected();
+    return j.account.account_no;
+  }
+
+  if(categorySel) categorySel.onchange = setTypeOptions;
+  if(typeSel) typeSel.onchange = renderFields;
+  setTypeOptions();
+
+  if(applyBtn){
+    applyBtn.onclick = async ()=>{
+      try{
+        if(msg) msg.textContent = '';
+        const customerId = await ensureCustomer();
+        const accountNo = await ensureAccount(customerId);
+
+        const c = categorySel.value;
+        const t = typeSel.value;
+
+        let data = {};
+        if(c==='예적금'){
+          const amount = Number(document.getElementById('pAmount')?.value||0);
+          let term = Number(document.getElementById('pTerm')?.value||0);
+          if(amount<=0) throw new Error('가입 금액 입력');
+          if(term<=0) throw new Error('기간(개월) 입력');
+          // 주택청약: 만기 9999년 표기 (데모)
+          const isHousing = t==='주택청약';
+          data = { amount, termMonths: term, maturityYear: isHousing ? 9999 : null };
+        } else if(c==='대출'){
+          const loanAmt = Number(document.getElementById('pLoanAmt')?.value||0);
+          if(loanAmt<=0) throw new Error('대출 금액 입력');
+          data = { amount: loanAmt, interestRate: 0.04, interestType: '고정(4%)' };
+        } else if(c==='투자'){
+          const name = (document.getElementById('pFundName')?.value||'').trim();
+          const amt = Number(document.getElementById('pFundAmt')?.value||0);
+          if(!name) throw new Error('펀드 상품명 입력');
+          if(amt<=0) throw new Error('투자 금액 입력');
+          data = { fundName: name, amount: amt };
+        } else if(c==='카드'){
+          const cardType = (document.getElementById('pCardType')?.value||'체크카드');
+          const pin = (document.getElementById('pCardPin')?.value||'').trim();
+          if(pin.length<4) throw new Error('카드 비밀번호 4자리+ 입력');
+
+          let network = 'DOMESTIC';
+          let creditLimit = null;
+          let shippingAddress = (document.getElementById('pShip')?.value||'').trim();
+          if(cardType==='신용카드'){
+            if(!window.__creditAgree) throw new Error('신용정보 동의 버튼을 눌러줘');
+            creditLimit = Number(document.getElementById('pCreditLimit')?.value||0);
+            if(creditLimit<=0) throw new Error('신용한도 입력');
+            const nt = document.getElementById('pNetworkType')?.value||'DOMESTIC';
+            if(nt==='INTL'){
+              const brand = document.getElementById('pNetworkBrand')?.value||'VISA';
+              network = brand; // VISA or MASTER
+            } else {
+              network = 'DOMESTIC';
+            }
+          }
+          data = { cardType, network, creditLimit, pin, shippingAddress };
+        } else if(c==='보험'){
+          const name = (document.getElementById('pInsName')?.value||'').trim();
+          const premium = Number(document.getElementById('pInsPremium')?.value||0);
+          if(!name) throw new Error('보험 상품명 입력');
+          if(premium<=0) throw new Error('보험료 입력');
+          data = { insuranceName: name, premium };
+        }
+
+        const res = await api('teller.product.apply', {
+          customerId,
+          accountNo,
+          category: c,
+          productType: t,
+          data
+        });
+
+        if(res.card && res.card.card_number){
+          if(msg) msg.textContent = `완료! 카드번호: ${res.card.card_number} (${res.card.network})`;
+        }else{
+          if(msg) msg.textContent = '완료! 신청이 저장됨.';
+        }
+      }catch(e){
+        if(msg) msg.textContent = '실패: ' + (e.message || e);
+      }
+    };
+  }
+}
 
 
 function int(v){ const n=Number(v||0); return Number.isFinite(n)?Math.floor(n):0; }
@@ -921,7 +1274,7 @@ function renderJeSingoList(){
 
 function updateRestrictPreview(){
   const preview = document.getElementById('rPreview');
-  const accNo = document.getElementById('rAcc')?.value;
+  const accNo = (function(){ var _e=document.getElementById('rAcc'); return _e ? _e.value : ''; })();
   if(!selectedDetail || !accNo){ preview.textContent='-'; return; }
   const acc = (selectedDetail.accounts||[]).find(a=>a.account_no===accNo);
   if(!acc){ preview.textContent='-'; return; }
@@ -1125,231 +1478,382 @@ document.getElementById('eBtn').onclick = async ()=>{
 }
 
 // ---------- 상품가입 ----------
-
-
-
-// ---------------- 상품가입 UI (rebuild v14) ----------------
 function renderProducts(){
-  const form = document.getElementById('prodForm');
-  const cat = document.getElementById('prodCat');
+  const box = document.getElementById('prodBox');
   const msg = document.getElementById('prodMsg');
-  const badge = document.getElementById('prodSelectedBadge');
-  const btn = document.getElementById('prodApplyBtn');
-  if(!form || !cat || !msg || !badge || !btn) return;
-
-  const cust = (typeof selectedCustomer!=='undefined' && selectedCustomer) ? selectedCustomer : null;
-  badge.textContent = cust ? `${cust.name} · ${cust.customer_no || ''}`.trim() : '없음';
-
-  function setMsg(t, ok=false){
-    msg.textContent = t || '';
-    msg.style.color = ok ? '#34d399' : '';
+  if(!box) return;
+  msg.textContent = '';
+  const cust = selectedCustomer;
+  if(!cust){
+    box.innerHTML = '<div class="note">먼저 고객을 검색/선택해줘.</div>';
+    return;
   }
+  const accList = (selectedDetail && selectedDetail.accounts) ? selectedDetail.accounts : [];
+  const accNo = accList[0] ? accList[0].account_no : '';
 
-  function renderForm(){
-    setMsg('');
-    const v = cat.value;
+  box.innerHTML = `
+  <div class="grid2">
+    <div class="card2">
+      <div style="font-weight:900;margin-bottom:8px">카테고리</div>
+      <select id="pCat" class="input">
+        <option>예적금</option>
+        <option>대출</option>
+        <option>투자</option>
+        <option>카드</option>
+        <option>보험</option>
+      </select>
+      <div style="height:10px"></div>
+      <div class="note">선택 고객: <b>${escapeHtml(cust.name)}</b> · 계좌(기본): ${escapeHtml(accNo||'-')}</div>
+    </div>
 
-    if(v==='예적금'){
-      form.innerHTML = `
-        <div class="note">상품</div>
-        <select id="p_sav_type" class="input">
-          <option value="정기적금">정기적금</option>
-          <option value="자유적금">자유적금</option>
-          <option value="주택청약">주택청약(만기 9999년)</option>
+    <div class="card2">
+      <div style="font-weight:900;margin-bottom:8px">가입 정보</div>
+      <div id="pFields"></div>
+      <div style="height:10px"></div>
+      <button id="pApply" class="btn ok" style="width:100%">가입 처리</button>
+      <div class="note" style="margin-top:10px">※ 데모 규칙: 대출 이자 4% 고정, 주택청약 만기 9999년</div>
+    </div>
+  </div>
+  `;
+
+  const fields = document.getElementById('pFields');
+  const cat = document.getElementById('pCat');
+
+  function renderFields(){
+    const c = cat.value;
+    if(c === '예적금'){
+      fields.innerHTML = `
+        <label class="note">상품</label>
+        <select id="pType" class="input">
+          <option>정기적금</option>
+          <option>자유적금</option>
+          <option>주택청약</option>
         </select>
         <div style="height:10px"></div>
-        <div class="grid2">
-          <div><div class="note">가입 금액</div><input id="p_amt" class="input" type="number" min="0" value="10000"></div>
-          <div><div class="note">기간(년)</div><input id="p_term" class="input" type="number" min="1" value="1"></div>
-        </div>
-        <div class="note" style="margin-top:8px">주택청약 선택 시 기간은 자동 9999년.</div>
-      `;
-    } else if(v==='대출'){
-      form.innerHTML = `
-        <div class="grid2">
-          <div><div class="note">빌릴 금액</div><input id="p_loan_amt" class="input" type="number" min="0" value="1000000"></div>
-          <div><div class="note">이자</div><input class="input" value="4% (고정)" disabled></div>
-        </div>
-      `;
-    } else if(v==='투자'){
-      form.innerHTML = `
-        <div class="note">펀드 상품</div>
-        <input id="p_fund_name" class="input" placeholder="예: 선우 글로벌 펀드 A" value="선우 글로벌 펀드 A">
+        <label class="note">가입 금액</label>
+        <input id="pAmt" class="input" type="number" min="0" value="10000"/>
         <div style="height:10px"></div>
-        <div class="note">투자 금액</div>
-        <input id="p_fund_amt" class="input" type="number" min="0" value="50000">
+        <label class="note">기간(년)</label>
+        <input id="pTerm" class="input" type="number" min="1" value="1"/>
+        <div class="note" id="pHint" style="margin-top:8px"></div>
       `;
-    } else if(v==='카드'){
-      form.innerHTML = `
-        <div class="grid2">
-          <div>
-            <div class="note">카드 종류</div>
-            <select id="p_card_kind" class="input">
-              <option value="체크카드">체크카드</option>
-              <option value="신용카드">신용카드</option>
-            </select>
-          </div>
-          <div>
-            <div class="note">구분</div>
-            <select id="p_card_region" class="input">
-              <option value="국내전용">국내전용</option>
-              <option value="해외겸용">해외겸용</option>
-            </select>
-          </div>
-        </div>
-        <div style="height:10px"></div>
-        <div id="p_card_extra"></div>
-      `;
-      const kind = document.getElementById('p_card_kind');
-      const region = document.getElementById('p_card_region');
-      const extra = document.getElementById('p_card_extra');
-
-      function renderExtra(){
-        const isCredit = (kind.value==='신용카드');
-        const isIntl = (region.value==='해외겸용');
-        extra.innerHTML = `
-          ${isCredit ? `
-            <div class="grid2">
-              <div><div class="note">한도</div><input id="p_card_limit" class="input" type="number" min="0" value="500000"></div>
-              <div style="display:flex;gap:10px;align-items:flex-end">
-                <button id="p_credit_consent" class="btn2" type="button">신용정보 동의</button>
-                <span class="note" id="p_credit_state">미동의</span>
-              </div>
-            </div>
-            <div style="height:10px"></div>
-          `:''}
-
-          ${isIntl ? `
-            <div class="note">브랜드</div>
-            <select id="p_card_brand" class="input">
-              <option value="VISA">VISA</option>
-              <option value="MASTER">MASTER</option>
-            </select>
-            <div style="height:10px"></div>
-            <div class="note">카드번호 시작: VISA 4816 / MASTER 5927</div>
-          ` : `
-            <div class="note">카드번호 시작: 국내전용 9496</div>
-          `}
-
-          <div style="height:10px"></div>
-          <div class="note">배송지</div>
-          <input id="p_card_addr" class="input" placeholder="예: 선우은행 의왕지점 수령" value="선우은행 의왕지점">
-          <div style="height:10px"></div>
-          <div class="note">비밀번호(4자리)</div>
-          <input id="p_card_pin" class="input" maxlength="4" placeholder="예: 1234">
-        `;
-
-        if(isCredit){
-          extra.dataset.consent = '0';
-          document.getElementById('p_credit_consent').onclick = ()=>{
-            extra.dataset.consent = '1';
-            const st = document.getElementById('p_credit_state');
-            st.textContent = '동의됨';
-            st.style.color = '#34d399';
-          };
+      const pType = document.getElementById('pType');
+      const term = document.getElementById('pTerm');
+      const hint = document.getElementById('pHint');
+      const sync = ()=>{
+        if(pType.value==='주택청약'){
+          term.value = 9999;
+          term.disabled = true;
+          hint.textContent = '주택청약은 만기 9999년으로 고정됨';
         } else {
-          extra.dataset.consent = '1';
+          term.disabled = false;
+          hint.textContent = '';
         }
-      }
-
-      kind.onchange = renderExtra;
-      region.onchange = renderExtra;
-      renderExtra();
-    } else if(v==='보험'){
-      form.innerHTML = `
-        <div class="note">보험 상품명</div>
-        <input id="p_ins_name" class="input" placeholder="예: 선우 안심 보험" value="선우 안심 보험">
+      };
+      pType.onchange = sync; sync();
+    } else if(c === '대출'){
+      fields.innerHTML = `
+        <label class="note">빌릴 금액</label>
+        <input id="pLoan" class="input" type="number" min="0" value="1000000"/>
         <div style="height:10px"></div>
-        <div class="note">월 납입</div>
-        <input id="p_ins_amt" class="input" type="number" min="0" value="15000">
+        <div class="badge">이자: 4% 고정</div>
+      `;
+    } else if(c === '투자'){
+      fields.innerHTML = `
+        <label class="note">펀드 상품명</label>
+        <input id="pFund" class="input" value="선우 밸런스 펀드"/>
+        <div style="height:10px"></div>
+        <label class="note">투자금</label>
+        <input id="pInv" class="input" type="number" min="0" value="50000"/>
+      `;
+    } else if(c === '카드'){
+      fields.innerHTML = `
+        <label class="note">카드 종류</label>
+        <select id="pCardType" class="input">
+          <option>체크카드</option>
+          <option>신용카드</option>
+        </select>
+        <div style="height:10px"></div>
+
+        <div id="creditBox" class="hidden">
+          <label class="note">신용 한도</label>
+          <input id="pLimit" class="input" type="number" min="0" value="1000000"/>
+          <div style="height:10px"></div>
+          <button id="pAgree" class="btn2" style="width:100%">신용정보 동의</button>
+          <div class="note" id="pAgreeMsg" style="margin-top:8px">동의해야 발급 가능</div>
+          <div style="height:10px"></div>
+        </div>
+
+        <label class="note">국내/해외</label>
+        <select id="pDomestic" class="input">
+          <option value="DOMESTIC">국내전용</option>
+          <option value="GLOBAL">해외겸용</option>
+        </select>
+        <div style="height:10px"></div>
+
+        <div id="netBox" class="hidden">
+          <label class="note">브랜드</label>
+          <select id="pNetwork" class="input">
+            <option value="VISA">VISA</option>
+            <option value="MASTER">MASTER</option>
+          </select>
+        </div>
+        <div style="height:10px"></div>
+
+        <label class="note">배송지</label>
+        <input id="pShip" class="input" placeholder="예: 부산 ..."/>
+        <div style="height:10px"></div>
+        <label class="note">카드 비밀번호(4자리)</label>
+        <input id="pPin" class="input" inputmode="numeric" maxlength="4" placeholder="예: 1234"/>
+        <div class="note" style="margin-top:8px">번호 규칙: 국내 9496, VISA 4816, MASTER 5927</div>
+      `;
+
+      const cardType = document.getElementById('pCardType');
+      const creditBox = document.getElementById('creditBox');
+      const agreeBtn = document.getElementById('pAgree');
+      const agreeMsg = document.getElementById('pAgreeMsg');
+      const domestic = document.getElementById('pDomestic');
+      const netBox = document.getElementById('netBox');
+
+      let agreed = false;
+      const sync = ()=>{
+        const isCredit = cardType.value==='신용카드';
+        creditBox.classList.toggle('hidden', !isCredit);
+        if(!isCredit){ agreed = true; agreeMsg.textContent='(체크카드는 동의 불필요)'; }
+        else { agreed = false; agreeMsg.textContent='동의해야 발급 가능'; }
+        netBox.classList.toggle('hidden', domestic.value!=='GLOBAL');
+      };
+
+      agreeBtn.onclick = ()=>{ agreed=true; agreeMsg.textContent='동의 완료'; };
+      cardType.onchange = sync;
+      domestic.onchange = sync;
+      sync();
+
+      // store agreed state on element for apply
+      creditBox.dataset.agreedRef = '1';
+      fields.dataset.getAgreed = ()=>agreed;
+      fields.__getAgreed = ()=>agreed;
+    } else { // 보험
+      fields.innerHTML = `
+        <label class="note">보험 상품명</label>
+        <input id="pIns" class="input" value="미니 상해보험"/>
+        <div style="height:10px"></div>
+        <label class="note">월 납입액</label>
+        <input id="pInsAmt" class="input" type="number" min="0" value="9900"/>
       `;
     }
   }
 
-  cat.onchange = renderForm;
-  renderForm();
+  cat.onchange = renderFields;
+  renderFields();
 
-  btn.onclick = async ()=>{
+  document.getElementById('pApply').onclick = async ()=>{
     try{
-      const custNow = (typeof selectedCustomer!=='undefined' && selectedCustomer) ? selectedCustomer : null;
-      badge.textContent = custNow ? `${custNow.name} · ${custNow.customer_no || ''}`.trim() : '없음';
-
-      if(!custNow || !custNow.id){
-        setMsg('고객을 먼저 선택해줘. (상단 검색 → 선택 고객)', false);
-        return;
-      }
-
-      const category = cat.value;
-      let productType = category;
-      const payload = {};
-
-      if(category==='예적금'){
-        const t = document.getElementById('p_sav_type').value;
-        const amt = Number(document.getElementById('p_amt').value||0);
-        let term = Number(document.getElementById('p_term').value||1);
-        if(t==='주택청약') term = 9999;
-        productType = t;
-        payload.amount = amt;
-        payload.term_years = term;
-      } else if(category==='대출'){
+      const c = document.getElementById('pCat').value;
+      let productType = '';
+      let data = {};
+      if(c==='예적금'){
+        productType = document.getElementById('pType').value;
+        data.amount = Number(document.getElementById('pAmt').value||0);
+        data.termYears = Number(document.getElementById('pTerm').value||0);
+      } else if(c==='대출'){
         productType = '대출';
-        payload.amount = Number(document.getElementById('p_loan_amt').value||0);
-        payload.interest = 0.04;
-      } else if(category==='투자'){
+        data.amount = Number(document.getElementById('pLoan').value||0);
+        data.interestRate = 0.04;
+      } else if(c==='투자'){
         productType = '펀드';
-        payload.fund_name = (document.getElementById('p_fund_name').value||'').trim();
-        payload.amount = Number(document.getElementById('p_fund_amt').value||0);
-      } else if(category==='카드'){
-        const kind = document.getElementById('p_card_kind').value;
-        const region = document.getElementById('p_card_region').value;
-        productType = kind;
-        payload.region = region;
+        data.fundName = document.getElementById('pFund').value.trim();
+        data.amount = Number(document.getElementById('pInv').value||0);
+      } else if(c==='카드'){
+        const ct = document.getElementById('pCardType').value;
+        productType = ct;
+        const domestic = document.getElementById('pDomestic').value;
+        const network = domestic==='GLOBAL' ? document.getElementById('pNetwork').value : 'DOMESTIC';
+        const pin = (document.getElementById('pPin').value||'').trim();
+        const ship = document.getElementById('pShip').value.trim();
+        if(pin.length<4) throw new Error('비밀번호 4자리 필요');
 
-        const extra = document.getElementById('p_card_extra');
-        if(kind==='신용카드'){
-          if((extra.dataset.consent||'0')!=='1') throw new Error('신용정보 동의 버튼을 눌러야 해');
-          payload.limit = Number(document.getElementById('p_card_limit').value||0);
+        // credit validation
+        if(ct==='신용카드'){
+          // read agreed from closure
+          const agreed = fields.__getAgreed ? fields.__getAgreed() : false;
+          if(!agreed) throw new Error('신용정보 동의 필요');
+          data.creditLimit = Number(document.getElementById('pLimit').value||0);
         }
-        if(region==='해외겸용'){
-          payload.brand = document.getElementById('p_card_brand').value; // VISA/MASTER
-        } else {
-          payload.brand = 'DOMESTIC';
-        }
-        payload.address = (document.getElementById('p_card_addr').value||'').trim();
-        payload.pin = (document.getElementById('p_card_pin').value||'').trim();
-        if(payload.pin.length!==4) throw new Error('비밀번호 4자리 필요');
-      } else if(category==='보험'){
+        data.cardType = ct;
+        data.network = network;
+        data.shippingAddress = ship;
+        data.pin = pin;
+      } else { // 보험
         productType = '보험';
-        payload.name = (document.getElementById('p_ins_name').value||'').trim();
-        payload.monthly = Number(document.getElementById('p_ins_amt').value||0);
+        data.productName = document.getElementById('pIns').value.trim();
+        data.monthly = Number(document.getElementById('pInsAmt').value||0);
       }
 
-      const r = await api('teller.product.apply', { customerId: custNow.id, category, productType, payload });
-      setMsg(`처리 완료! (ID: ${r.id || 'OK'})`, true);
+      const res = await api('teller.product.apply', {
+        customerId: cust.id,
+        accountNo: accNo || null,
+        category: c,
+        productType,
+        data
+      });
+
+      if(res.card && res.card.card_number){
+        msg.textContent = `가입 완료 · 발급 카드번호: ${res.card.card_number} (${res.card.network})`;
+      } else {
+        msg.textContent = '가입 완료';
+      }
     }catch(e){
-      setMsg('실패: ' + (e.message || e), false);
+      msg.textContent = '실패: ' + (e.message||e);
     }
   };
 }
 
-// hook tab switching & customer selection to re-render badge/UI
-(function(){
-  const _st = window.switchTab;
-  window.switchTab = function(tab){
-    if(typeof _st === 'function') _st(tab);
-    if(tab === 'prod') { try{ setTimeout(renderProducts, 0); }catch(e){} }
-  };
-  const _sc = window.selectCustomer;
-  window.selectCustomer = function(c){
-    if(typeof _sc === 'function') _sc(c);
-    try{ setTimeout(renderProducts, 0); }catch(e){}
-  };
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // if prod tab is visible on load (unlikely), render anyway
-    try{ setTimeout(()=>{ if(document.getElementById('tab-prod') && !document.getElementById('tab-prod').classList.contains('hidden')) renderProducts(); }, 0); }catch(e){}
-  });
-})();
 
+/* ===== 작성된 서식 보기 (실시간 폴링) ===== */
+const openFormsBtn = document.getElementById('openForms');
+const formsPanel = document.getElementById('formsPanel');
+const formsRefresh = document.getElementById('formsRefresh');
+const formsList = document.getElementById('formsList');
+const formModal = document.getElementById('formModal');
+const fmClose = document.getElementById('fmClose');
+const fmTitle = document.getElementById('fmTitle');
+const fmJson = document.getElementById('fmJson');
+const fmSig = document.getElementById('fmSig');
+
+let formsPollTimer = null;
+let lastFormsHash = '';
+
+function hashForms(arr){
+  try{
+    return (arr||[]).map(x=>x.id+":"+x.created_at).join("|");
+  }catch(e){ return String(Date.now()); }
+}
+
+function fmtDate(s){
+  try{ return new Date(s).toLocaleString(); }catch(e){ return s || "-"; }
+}
+
+function renderForms(forms){
+  if(!formsList) return;
+  if(!forms || forms.length===0){
+    formsList.innerHTML = '<div class="note">아직 제출된 서식이 없어요.</div>';
+    return;
+  }
+  formsList.innerHTML = forms.map(f=>{
+    const fd = f.form_data || {};
+    const title = (fd.requestType || f.form_type || '서식');
+    const who = (fd.applicantType === 'agent')
+      ? (fd.agentText ? fd.agentText : '대리인')
+      : (fd.selfName ? fd.selfName : '본인');
+    const dt = fmtDate(f.created_at);
+    return `<div class="formRow" data-formid="${f.id}">
+      <div>
+        <div style="font-weight:700">${title}</div>
+        <div class="note" style="margin-top:4px">${who} · ${f.status || 'submitted'}</div>
+      </div>
+      <div class="note" style="text-align:right;min-width:180px">${dt}</div>
+    </div>`;
+  }).join('');
+
+  // click handlers
+  [...formsList.querySelectorAll('.formRow')].forEach(row=>{
+    row.addEventListener('click', async ()=>{
+      const formId = row.getAttribute('data-formid');
+      await openFormModal(formId);
+    });
+  });
+}
+
+async function loadForms(force=false){
+  if(!formsPanel || formsPanel.classList.contains('hidden')) return;
+  if(!selectedCustomer){
+    if(force) alert('고객을 먼저 선택해줘.');
+    return;
+  }
+  try{
+    const j = await api('teller.forms.list', { customerId: selectedCustomer.id, limit: 30 });
+    const forms = j.forms || [];
+    const h = hashForms(forms);
+    if(force || h !== lastFormsHash){
+      lastFormsHash = h;
+      renderForms(forms);
+    }
+  }catch(e){
+    if(force) alert('서식 조회 실패: ' + (e.message || e));
+  }
+}
+
+async function openFormModal(formId){
+  if(!formId) return;
+  try{
+    const j = await api('teller.forms.get', { formId });
+    const f = j.form;
+    const fd = f.form_data || {};
+    const title = (fd.requestType || f.form_type || '서식');
+    if(fmTitle) fmTitle.textContent = title + " · " + fmtDate(f.created_at);
+    if(fmJson) fmJson.textContent = JSON.stringify(fd, null, 2);
+    if(fmSig) fmSig.src = (f.signature_image || '');
+    if(formModal) formModal.classList.remove('hidden');
+  }catch(e){
+    alert('서식 불러오기 실패: ' + (e.message || e));
+  }
+}
+
+function startFormsPoll(){
+  stopFormsPoll();
+  formsPollTimer = setInterval(()=>loadForms(false), 3000);
+}
+function stopFormsPoll(){
+  if(formsPollTimer) clearInterval(formsPollTimer);
+  formsPollTimer = null;
+}
+
+if(openFormsBtn){
+  openFormsBtn.addEventListener('click', async ()=>{
+    if(!formsPanel) return;
+    formsPanel.classList.toggle('hidden');
+    if(!formsPanel.classList.contains('hidden')){
+      await loadForms(true);
+      startFormsPoll();
+    }else{
+      stopFormsPoll();
+    }
+  });
+}
+if(formsRefresh){
+  formsRefresh.addEventListener('click', ()=>loadForms(true));
+}
+if(fmClose){
+  fmClose.addEventListener('click', ()=>{ if(formModal) formModal.classList.add('hidden'); });
+}
+if(formModal){
+  formModal.addEventListener('click', (e)=>{ if(e.target === formModal) formModal.classList.add('hidden'); });
+}
+
+// 고객 선택이 바뀌면(선택 고객 갱신) 서식 패널이 열려있을 때 자동 새로고침
+const _origSetSelectedCustomer = setSelectedCustomer;
+setSelectedCustomer = function(c){
+  _origSetSelectedCustomer(c);
+  loadForms(true);
+};
 </script>
+<div id="formModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modalBox">
+    <div class="row" style="justify-content:space-between;gap:10px">
+      <div>
+        <div class="note">작성된 서식</div>
+        <div id="fmTitle" style="font-weight:700;margin-top:4px">-</div>
+      </div>
+      <button id="fmClose" class="btn">닫기</button>
+    </div>
+    <div style="height:10px"></div>
+    <div class="pre" id="fmJson"></div>
+    <div style="height:10px"></div>
+    <div class="note">서명</div>
+    <img id="fmSig" class="sigImg" alt="signature" />
+  </div>
+</div>
+
 </body>
 </html>
