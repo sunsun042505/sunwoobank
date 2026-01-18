@@ -654,7 +654,24 @@ exports.handler = async function handler(event) {
     }
 
     
-    // ================= iPad 서식(QR 토큰) =================
+    
+// ----- Internet banking password reset -----
+if (action === "admin.resetInternetBankingPassword") {
+  const { email, newPassword } = payload;
+  if (!email || !newPassword) return bad(400, "email_newPassword_required");
+  if (String(newPassword).length < 6) return bad(400, "password_too_short");
+
+  // Find user by email (demo scale: list users)
+  const userId = await findAuthUserIdByEmail(admin, String(email));
+  if (!userId) return bad(404, "user_not_found");
+
+  const { data, error } = await admin.auth.admin.updateUserById(userId, { password: String(newPassword) });
+  if (error) throw error;
+
+  return ok({ updated: true, userId });
+}
+
+// ================= iPad 서식(QR 토큰) =================
     if (action === "form.createToken") {
       const { customerId, accountNo, formType } = payload;
       if (!customerId) return bad(400, "customer_required");
@@ -705,29 +722,46 @@ exports.handler = async function handler(event) {
     }
 
     if (action === "form.submit") {
-      const { token, formType, formData, signatureImage, agentSignatureImage } = payload;
-      if (!token) return bad(400, "token_required");
+  const token = payload.token;
+  const signatureImage = payload.signatureImage || payload.signature_image || null;
 
-      const { data: ft, error: e1 } = await admin.from("form_tokens").select("*").eq("token", token).maybeSingle();
-      if (e1) throw e1;
-      if (!ft) return bad(404, "token_not_found");
-      if (ft.used_at) return bad(410, "token_used");
-      if (new Date(ft.expires_at).getTime() < Date.now()) return bad(410, "token_expired");
+  // Backward/forward compatible payload
+  const formData = payload.formData || payload.form_data || payload.form || {};
+  const formType =
+    payload.formType ||
+    payload.form_type ||
+    formData.formType ||
+    formData.requestType ||
+    formData.requestTypeLabel ||
+    "창구 서식";
 
-      const { data: form, error: ef } = await admin.from("forms").insert({
-        customer_id: ft.customer_id,
-        account_id: ft.account_id,
-        form_type: formType || ft.form_type || "창구 서식",
-        form_data: formData || {},
-        signature_image: signatureImage || null
-      }).select("*").single();
-      if (ef) throw ef;
+  if (!token) return bad(400, "token_required");
 
-      const { error: eu } = await admin.from("form_tokens").update({ used_at: nowISO() }).eq("token", token);
-      if (eu) throw eu;
+  const tokenRow = await getFormToken(admin, token);
+  if (!tokenRow) return bad(404, "token_not_found");
+  if (tokenRow.expires_at && new Date(tokenRow.expires_at).getTime() < Date.now()) {
+    return bad(410, "token_expired");
+  }
 
-      return ok({ form_id: form.id });
-    }
+  // Ensure we always store the applicant mode inside data
+  const normalized = { ...formData };
+  if (!normalized.applicant && payload.applicant) normalized.applicant = payload.applicant;
+
+  const inserted = await createForm(admin, {
+    customer_id: tokenRow.customer_id,
+    account_id: tokenRow.account_id || null,
+    form_type: formType,
+    status: "submitted",
+    form_data: normalized,
+    signature_image: signatureImage,
+  });
+
+  // Mark token used (optional)
+  try { await markFormTokenUsed(admin, token, inserted.id); } catch(e) {}
+
+  return ok({ form: inserted });
+}
+
 
     // ================= 상품가입(텔러) =================
     if (action === "teller.product.apply") {

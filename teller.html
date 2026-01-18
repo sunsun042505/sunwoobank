@@ -122,7 +122,16 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
             <div class="note">선택 고객</div>
             <div class="badge" id="selInfo" style="margin-top:8px;width:100%;display:block">없음</div>
             <div style="height:10px"></div>
-            <button id="openFormQR" class="btn ok" style="width:100%">아이패드 서식 QR 열기(10분)</button>
+            
+          <div style="height:10px"></div>
+          <div class="note">서식 신청자</div>
+          <select id="qrApplicant" class="input">
+            <option value="self">본인</option>
+            <option value="agent">대리인</option>
+          </select>
+          <div class="note" style="margin-top:6px">대리인 선택 시 서식에서 대리인 정보/서명 입력</div>
+          <div style="height:10px"></div>
+<button id="openFormQR" class="btn ok" style="width:100%">아이패드 서식 QR 열기(10분)</button>
 <div style="height:10px"></div>
 <button id="openForms" class="btn" style="width:100%">작성된 서식 보기</button>
 <div id="formsPanel" class="card hidden" style="margin-top:10px;padding:12px">
@@ -981,7 +990,9 @@ if(openFormBtn){
 
       if(qrBox) qrBox.innerHTML = '<div class="note">QR 생성 중…</div>';
       const j = await api('form.createToken', { customerId: selectedCustomer.id, accountNo: firstAcc, formType: '창구 서식' });
-      const fullUrl = location.origin + j.url;
+      const fullUrlBase = location.origin + j.url;
+        const applicant = (document.getElementById('qrApplicant')?.value || 'self').trim();
+        const fullUrl = fullUrlBase + (fullUrlBase.includes('?') ? '&' : '?') + 'applicant=' + encodeURIComponent(applicant);
       if(qrLink) qrLink.textContent = fullUrl;
 
       // Use image-based QR for reliability (no external JS lib)
