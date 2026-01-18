@@ -423,7 +423,9 @@ if (seg) {
 if(btnAgent) btnAgent.addEventListener("click",function(e){ if(e) e.preventDefault(); setApplicant("agent"); });
 if(submitBtn) submitBtn.addEventListener("click", onSubmit);
 
-  setApplicant("self");
+  // initial applicant (teller에서 QR 생성 시 applicant=self|agent 전달)
+  const applicantParam = String(qs.get("applicant") || "").toLowerCase();
+  setApplicant(applicantParam === "agent" ? "agent" : "self");
   setDyn();
   init();
 })();

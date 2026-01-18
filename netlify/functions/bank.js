@@ -722,44 +722,59 @@ if (action === "admin.resetInternetBankingPassword") {
     }
 
     if (action === "form.submit") {
-  const token = payload.token;
-  const signatureImage = payload.signatureImage || payload.signature_image || null;
+	      const token = payload.token;
+	      const signatureImage = payload.signatureImage || payload.signature_image || null;
+	      const formData = payload.formData || payload.form_data || payload.form || null;
+	      if (!token) return bad(400, "token_required");
+	      if (!formData) return bad(400, "formData_required");
+	      if (!signatureImage) return bad(400, "signature_required");
 
-  // Backward/forward compatible payload
-  const formData = payload.formData || payload.form_data || payload.form || {};
-  const formType =
-    payload.formType ||
-    payload.form_type ||
-    formData.formType ||
-    formData.requestType ||
-    formData.requestTypeLabel ||
-    "창구 서식";
+	      const { data: ft, error: e1 } = await admin
+	        .from("form_tokens")
+	        .select("*")
+	        .eq("token", token)
+	        .maybeSingle();
+	      if (e1) throw e1;
+	      if (!ft) return bad(404, "token_not_found");
+	      if (ft.used_at) return bad(410, "token_used");
+	      if (new Date(ft.expires_at).getTime() < Date.now()) return bad(410, "token_expired");
 
-  if (!token) return bad(400, "token_required");
+	      // normalize applicant fields (self/agent)
+	      const normalized = { ...formData };
+	      if (!normalized.applicantType && normalized.applicant_type) normalized.applicantType = normalized.applicant_type;
+	      if (!normalized.applicantType) normalized.applicantType = (payload.applicant || "self");
+	      if (!normalized.customerName && normalized.customer_name) normalized.customerName = normalized.customer_name;
+	      if (!normalized.agentName && normalized.agent_name) normalized.agentName = normalized.agent_name;
+	      if (!normalized.agentText && normalized.agent_text) normalized.agentText = normalized.agent_text;
 
-  const tokenRow = await getFormToken(admin, token);
-  if (!tokenRow) return bad(404, "token_not_found");
-  if (tokenRow.expires_at && new Date(tokenRow.expires_at).getTime() < Date.now()) {
-    return bad(410, "token_expired");
-  }
+	      const formType =
+	        payload.formType ||
+	        payload.form_type ||
+	        normalized.formType ||
+	        normalized.form_type ||
+	        ft.form_type ||
+	        "창구 서식";
 
-  // Ensure we always store the applicant mode inside data
-  const normalized = { ...formData };
-  if (!normalized.applicant && payload.applicant) normalized.applicant = payload.applicant;
+	      const { data: formRow, error: e2 } = await admin
+	        .from("forms")
+	        .insert({
+	          customer_id: ft.customer_id,
+	          account_id: ft.account_id || null,
+	          form_type: formType,
+	          form_data: normalized,
+	          signature_image: signatureImage,
+	        })
+	        .select("*")
+	        .single();
+	      if (e2) throw e2;
 
-  const inserted = await createForm(admin, {
-    customer_id: tokenRow.customer_id,
-    account_id: tokenRow.account_id || null,
-    form_type: formType,
-    status: "submitted",
-    form_data: normalized,
-    signature_image: signatureImage,
-  });
+	      const { error: e3 } = await admin
+	        .from("form_tokens")
+	        .update({ used_at: new Date().toISOString(), used_form_id: formRow.id })
+	        .eq("token", token);
+	      if (e3) throw e3;
 
-  // Mark token used (optional)
-  try { await markFormTokenUsed(admin, token, inserted.id); } catch(e) {}
-
-  return ok({ form: inserted });
+	      return ok({ form: formRow });
 }
 
 
@@ -864,7 +879,7 @@ if (action === "teller.forms.list") {
   const limit = Math.min(Number(payload.limit || 30) || 30, 100);
   const { data: forms, error } = await admin
     .from("forms")
-    .select("id, created_at, status, form_type, form_data, signature_image")
+	    .select("id, created_at, form_type, form_data, signature_image")
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false })
     .limit(limit);
