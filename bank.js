@@ -10,6 +10,8 @@ function getCreateClient(){
   }
 }
 
+const createClient = getCreateClient();
+
 function json(statusCode, obj) {
   return {
     statusCode,
@@ -80,16 +82,23 @@ function nextCustomerNo(count) {
   return `C-${1001 + (count || 0)}`;
 }
 
-async function requireSupabaseEnv() {
+function requirePublicEnv(){
   const url = process.env.SUPABASE_URL;
   const anon = process.env.SUPABASE_ANON_KEY;
-  const srv = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anon || !srv) throw new Error("missing_supabase_env");
-  return { url, anon, srv };
+  if(!url || !anon) throw new Error('missing_public_env');
+  return { url, anon };
 }
 
-async function adminClient() {
-  const { url, srv } = await requireSupabaseEnv();
+function requireAdminEnv(){
+  const url = process.env.SUPABASE_URL;
+  const srv = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!url || !srv) throw new Error('missing_admin_env');
+  return { url, srv };
+}
+
+async function adminClient(){
+  if(!createClient) throw new Error('supabase_client_missing');
+  const { url, srv } = requireAdminEnv();
   return createClient(url, srv, { auth: { persistSession: false } });
 }
 
@@ -260,7 +269,7 @@ exports.handler = async function handler(event) {
 
       // Public config for front-end bootstrap
       if (q.config === "1" || p.endsWith("/config")) {
-        const { url, anon } = await requireSupabaseEnv();
+        const { url, anon } = requirePublicEnv();
         return json(200, { ok: true, supabaseUrl: url, supabaseAnonKey: anon });
       }
 
@@ -283,6 +292,7 @@ exports.handler = async function handler(event) {
     const payload = body.payload || {};
     if (!action) return bad(400, "missing_action");
 
+    // ensure supabase client/env for actions that need DB
     const admin = await adminClient();
 
     const isTeller = action.startsWith("teller.") || action.startsWith("jesingo.") || action.startsWith("restrict.") || action.startsWith("admin.") || action === "form.createToken";
@@ -845,6 +855,6 @@ if (action === "teller.forms.get") {
 }
 return bad(400, "unknown_action", { action });
   } catch (err) {
-    return bad(500, "server_error", { message: String(err?.message || err) });
+    return bad(500, "server_error", { message: String((err && err.message) ? err.message : err) });
   }
 };

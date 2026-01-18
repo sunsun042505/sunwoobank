@@ -325,13 +325,6 @@ document.getElementById('sendBtn').onclick = async ()=>{
   }
 };
 
-const { data: { session } } = await supabase.auth.getSession();
-if(session){
-  setLoggedIn(session.user.email);
-  await bootstrap();
-}else{
-  setLoggedOut();
-}
 
 function renderProducts(products){
   const panel = document.getElementById('productsPanel');
