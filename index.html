@@ -100,7 +100,7 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
       <p>계좌조회 · 이체 · 가입상품 · 서식요청(아이패드)까지<br/>Netlify + Functions + Supabase 데모</p>
       <div class="hero-actions">
         <button id="btnOpenLogin" class="btn primary">로그인</button>
-        <a class="btn ghost" href="teller/">텔러 화면</a>
+        <a class="btn ghost" href="teller.html">텔러 화면</a>
       </div>
     </div>
     <div class="cards">
@@ -188,12 +188,20 @@ async function getConfig(){
   return j;
 }
 
-const cfg = await getConfig();
-const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+let cfg = null;
+let supabase = null;
+
+async function ensureSupabase(){
+  if(supabase) return supabase;
+  cfg = await getConfig();
+  supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  return supabase;
+}
 
 async function bankApi(action, payload){
-  const { data: { session } } = await supabase.auth.getSession();
-  if(!session) throw new Error('로그인 필요');
+  const sb = await ensureSupabase();
+  const { data: { session } } = await sb.auth.getSession();
+if(!session) throw new Error('로그인 필요');
   const r = await fetch('/.netlify/functions/bank', {
     method:'POST',
     headers:{
@@ -286,7 +294,8 @@ loginBtn.onclick = async ()=>{
   try{
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('pw').value;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const sb = await ensureSupabase();
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if(error) throw error;
     setLoggedIn(data.user.email);
     await bootstrap();
@@ -296,7 +305,8 @@ loginBtn.onclick = async ()=>{
 };
 
 logoutBtn.onclick = async ()=>{
-  await supabase.auth.signOut();
+  const sb = await ensureSupabase();
+  await sb.auth.signOut();
   setLoggedOut();
 };
 
@@ -370,7 +380,25 @@ function initLanding(){
   if (landing) landing.style.display = 'block';
   if (app) app.style.display = 'none';
 }
-document.addEventListener('DOMContentLoaded', initLanding);
+document.addEventListener('DOMContentLoaded', function(){
+  initLanding();
+  (async function boot(){
+    try{
+      const sb = await ensureSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      if(session){
+        setLoggedIn(session.user.email);
+        await bootstrap();
+      }else{
+        setLoggedOut();
+      }
+    }catch(e){
+      setLoggedOut();
+      const m = document.getElementById('msg');
+      if(m) m.textContent = '서버 연결 실패(Functions 500). netlify/functions/bank 확인';
+    }
+  })();
+});
 </script>
 </body>
 </html>

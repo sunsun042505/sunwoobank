@@ -346,56 +346,71 @@ if (seg) {
   }
 
   async function onSubmit(){
-    if(msg) msg.textContent = "";
-    const typeCode = formTypeEl ? formTypeEl.value : "other";
-    const typeLabel = formTypeEl ? (((formTypeEl && formTypeEl.options && formTypeEl.options[formTypeEl.selectedIndex]) ? formTypeEl.options[formTypeEl.selectedIndex].text : \"\") || "") : "";
-    const detail = ((detailEl && detailEl.value) || "").trim();
+  if(msg) msg.textContent = "";
+  const typeCode = formTypeEl ? formTypeEl.value : "other";
+  const typeLabel = (formTypeEl && formTypeEl.options && formTypeEl.options[formTypeEl.selectedIndex])
+    ? formTypeEl.options[formTypeEl.selectedIndex].text
+    : "";
 
-    // dynamic field data
-    const fd = {};
-    if(typeCode === "deposit" || typeCode === "withdraw"){
-      fd.amount = Number($("amt")?.value || 0) || 0;
-    }
-    if(typeCode === "product"){
-      fd.product = ($("prodName")?.value || "").trim();
-    }
-    if(typeCode === "ebanking"){
-      fd.ebanking = ($("ebType")?.value || "").trim();
-    }
+  const detail = ((detailEl && detailEl.value) || "").trim();
 
-    const baseData = {
-      requestType: typeLabel,
-      requestCode: typeCode,
-      detail,
-      applicantType: applicant,
-      selfName: ((selfNameEl && selfNameEl.value) || "").trim(),
-      agentName: ((agentNameEl && agentNameEl.value) || "").trim(),
-      agentText: ((agentTextEl && agentTextEl.value) || "").trim(),
-      ...fd
-    };
-
-    // choose signature based on applicant
-    const signatureImage = (applicant === "self") ? sigSelf.get() : sigAgent.get();
-    if(!signatureImage){
-      if(applicant === "self") return alert("본인 서명을 해주세요.");
-      return alert("대리인 서명을 해주세요.");
-    }
-    if(applicant === "agent" && !baseData.agentName){
-      return alert("대리인 성명을 입력해주세요.");
-    }
-
-    try{
-      await callBank("form.submit", {
-        token,
-        formType: loadedFormType,
-        formData: baseData,
-        signatureImage
-      });
-      hide(app); show(done);
-    }catch(e){
-      if(msg) msg.textContent = "저장 실패: " + (e.message || e);
-    }
+  // dynamic field data
+  const fd = {};
+  if(typeCode === "deposit" || typeCode === "withdraw"){
+    const amtEl = $("amt");
+    fd.amount = Number((amtEl ? amtEl.value : 0) || 0) || 0;
   }
+  if(typeCode === "product"){
+    const pEl = $("prodName");
+    fd.product = ((pEl ? pEl.value : "") || "").trim();
+  }
+  if(typeCode === "ebanking"){
+    const ebEl = $("ebType");
+    fd.ebanking = ((ebEl ? ebEl.value : "") || "").trim();
+  }
+
+  const baseData = {
+    requestType: typeLabel,
+    requestCode: typeCode,
+    detail: detail,
+    applicantType: applicant,
+    selfName: ((selfNameEl && selfNameEl.value) || "").trim(),
+    agentName: ((agentNameEl && agentNameEl.value) || "").trim(),
+    agentText: ((agentTextEl && agentTextEl.value) || "").trim()
+  };
+
+  // merge
+  for(const k in fd){ baseData[k] = fd[k]; }
+
+  // choose signature based on applicant
+  const signatureImage = (applicant === "self") ? sigSelf.get() : sigAgent.get();
+  if(!signatureImage){
+    if(applicant === "self") return alert("본인 서명을 해주세요.");
+    return alert("대리인 서명을 해주세요.");
+  }
+  if(applicant === "agent" && !baseData.agentName){
+    return alert("대리인 성명을 입력해주세요.");
+  }
+
+  try{
+    submitBtn && (submitBtn.disabled = true);
+    const r = await callBank("form.submit", {
+      token,
+      form: baseData,
+      signatureImage
+    });
+    if(r && r.ok){
+      hide(app);
+      show(done);
+    }else{
+      if(msg) msg.textContent = (r && r.error) ? r.error : "제출 실패";
+    }
+  }catch(e){
+    if(msg) msg.textContent = "제출 실패: " + (e.message || e);
+  }finally{
+    submitBtn && (submitBtn.disabled = false);
+  }
+}
 
   // events
   if(formTypeEl){

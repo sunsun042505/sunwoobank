@@ -1,5 +1,14 @@
 const crypto = require("crypto");
-const { createClient } = require("@supabase/supabase-js");
+function getCreateClient(){
+  try{
+    const mod = require("@supabase/supabase-js");
+    if(mod && typeof mod.createClient === "function") return mod.createClient;
+    if(mod && mod.default && typeof mod.default.createClient === "function") return mod.default.createClient;
+    return null;
+  }catch(e){
+    return null;
+  }
+}
 
 function json(statusCode, obj) {
   return {

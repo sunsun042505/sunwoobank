@@ -487,8 +487,8 @@ th,td{font-size:12px;padding:8px 6px;border-bottom:1px solid var(--line);text-al
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js">
-
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
 // ---------- 상품가입 ----------
 function renderProducts(){
   const box = document.getElementById('prodBox');
@@ -1274,7 +1274,7 @@ function renderJeSingoList(){
 
 function updateRestrictPreview(){
   const preview = document.getElementById('rPreview');
-  const accNo = document.getElementById('rAcc')?.value;
+  const accNo = (function(){ var _e=document.getElementById('rAcc'); return _e ? _e.value : ''; })();
   if(!selectedDetail || !accNo){ preview.textContent='-'; return; }
   const acc = (selectedDetail.accounts||[]).find(a=>a.account_no===accNo);
   if(!acc){ preview.textContent='-'; return; }
